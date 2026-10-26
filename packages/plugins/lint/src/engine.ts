@@ -1,9 +1,15 @@
 import type { LintDiagnostic, LintFix } from '@shirone-studio/contracts'
-import { collectProtectedRanges, maskSource } from '@shirone-studio/plugin-syntax-shirone'
+import {
+  collectProtectedRanges,
+  isProtected,
+  maskSource,
+  type MaskRange,
+} from '@shirone-studio/plugin-syntax-shirone'
 
 type RuleContext = {
   body: string
   masked: string
+  ranges: MaskRange[]
   lineStarts: number[]
 }
 
@@ -107,11 +113,15 @@ function checkCjkLatin(context: RuleContext): LintDiagnostic[] {
 
 function checkPunctuation(context: RuleContext): LintDiagnostic[] {
   const out: LintDiagnostic[] = []
-  for (const match of context.masked.matchAll(
+  // Read the source, not the mask: masked code/math becomes whitespace, which
+  // made `填 $1$，` look like "Han + spaces + ，" and flagged valid prose.
+  const protectedRange = (from: number, to: number) => isProtected(context.ranges, from, to)
+  for (const match of context.body.matchAll(
     /([\p{Script=Han}])[ \t]+([，。！？；：、])|([，。！？；：、])[ \t]+([\p{Script=Han}])/gu,
   )) {
     const index = match.index ?? 0
     const text = match[0]!
+    if (protectedRange(index, index + text.length)) continue
     const replacement = text.replace(/[ \t]+/g, '')
     out.push({
       ruleId: 'cjk-punct-space',
@@ -122,8 +132,9 @@ function checkPunctuation(context: RuleContext): LintDiagnostic[] {
       fix: fix('删除空格', index, index + text.length, replacement),
     })
   }
-  for (const match of context.masked.matchAll(/([\p{Script=Han}])([,;:!?])/gu)) {
+  for (const match of context.body.matchAll(/([\p{Script=Han}])([,;:!?])/gu)) {
     const index = match.index ?? 0
+    if (protectedRange(index, index + match[0]!.length)) continue
     const punctuation = match[2]!
     out.push({
       ruleId: 'ascii-punct-in-cjk',
@@ -137,21 +148,104 @@ function checkPunctuation(context: RuleContext): LintDiagnostic[] {
   return out
 }
 
-function checkFirstBlock(context: RuleContext): LintDiagnostic[] {
-  const lines = context.body.split('\n')
-  const index = lines.findIndex((line) => line.trim().length > 0)
-  if (index === -1) return []
-  const line = lines[index]!.trim()
-  const startsBad = /^(#{1,6}\s|[-*+]\s|>\s|```|~~~|\|)/.test(line)
-  if (!startsBad) return []
-  const offset = lines.slice(0, index).reduce((sum, item) => sum + item.length + 1, 0)
+/**
+ * Inline math spans (`$...$`), skipping display math (`$$...$$`), escaped `\$`
+ * and anything inside a fence or directive.
+ */
+function inlineMathSpans(context: RuleContext): Array<{ from: number; to: number }> {
+  const display = [...context.body.matchAll(/\$\$[\s\S]*?\$\$/g)].map((match) => {
+    const from = match.index ?? 0
+    return { from, to: from + match[0].length }
+  })
+  const spans: Array<{ from: number; to: number }> = []
+  for (const match of context.body.matchAll(/\$[^$\n]+\$/g)) {
+    const from = match.index ?? 0
+    const to = from + match[0].length
+    if (display.some((range) => from >= range.from && to <= range.to)) continue
+    if (context.body[from - 1] === '\\') continue
+    // Only skip ranges that are not math themselves, so a formula inside a
+    // fenced block or a directive is ignored.
+    const enclosed = context.ranges.some(
+      (range) => range.kind !== 'math' && from >= range.from && to <= range.to,
+    )
+    if (enclosed) continue
+    spans.push({ from, to })
+  }
+  return spans
+}
+
+/**
+ * Inline math must be separated from surrounding text by a space.
+ *
+ * Chinese punctuation is a valid boundary: `全填 $1$，` is correct, while
+ * `中文$x$中文` is not. Punctuation may always touch a formula, matching how
+ * the blog is written.
+ */
+function checkMathSpacing(context: RuleContext): LintDiagnostic[] {
+  const out: LintDiagnostic[] = []
+  const boundaryIsFine = (char: string | undefined) =>
+    char === undefined || /[\s\p{P}]/u.test(char)
+
+  for (const { from, to } of inlineMathSpans(context)) {
+    if (!boundaryIsFine(context.body[from - 1])) {
+      out.push({
+        ruleId: 'math-space',
+        severity: 'warning',
+        message: '行内公式两侧需要空格（中文标点除外）',
+        from: from - 1,
+        to: from,
+        fix: fix('插入空格', from, from, ' '),
+      })
+    }
+    if (!boundaryIsFine(context.body[to])) {
+      out.push({
+        ruleId: 'math-space',
+        severity: 'warning',
+        message: '行内公式两侧需要空格（中文标点除外）',
+        from: to,
+        to: to + 1,
+        fix: fix('插入空格', to, to, ' '),
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * The blog's excerpt is the first ordinary paragraph (`remark-excerpt` skips
+ * every other node), so a leading blockquote, heading or list is harmless.
+ * Only a body without any paragraph has nothing to summarise.
+ */
+function checkBodyParagraph(context: RuleContext): LintDiagnostic[] {
+  let inFence = false
+  let fence = ''
+  for (const raw of context.body.split('\n')) {
+    const line = raw.trim()
+    if (line.length === 0) continue
+
+    const open = /^(`{3,}|~{3,})/.exec(line)
+    if (!inFence && open) {
+      inFence = true
+      fence = open[1]![0]!
+      continue
+    }
+    if (inFence) {
+      if (new RegExp(`^\\${fence}{3,}\\s*$`).test(line)) inFence = false
+      continue
+    }
+
+    if (/^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|`{3,}|~{3,}|\||:::|@tab\b|<)/.test(line)) continue
+    if (/^([-*_])\1{2,}\s*$/.test(line)) continue
+    return []
+  }
+
   return [
     {
-      ruleId: 'opening-paragraph',
+      ruleId: 'body-paragraph',
       severity: 'warning',
-      message: '正文第一块建议是普通段落（列表卡片摘要会取它）',
-      from: offset,
-      to: offset + line.length,
+      message: '正文没有普通段落，列表卡片摘要会为空',
+      from: 0,
+      to: Math.min(context.body.length, 80),
     },
   ]
 }
@@ -171,21 +265,35 @@ function checkDirectiveBalance(context: RuleContext): LintDiagnostic[] {
   ]
 }
 
-export function checkBody(body: string, contentType = 'posts'): LintDiagnostic[] {
+/** Options that depend on frontmatter, which the body alone does not carry. */
+export interface LintOptions {
+  /** Frontmatter `category`; the 题意 opener is only expected on 题解 posts. */
+  category?: string
+}
+
+export function checkBody(
+  body: string,
+  contentType = 'posts',
+  options: LintOptions = {},
+): LintDiagnostic[] {
+  const ranges = collectProtectedRanges(body)
   const context: RuleContext = {
     body,
-    masked: maskSource(body, collectProtectedRanges(body)),
+    masked: maskSource(body, ranges),
+    ranges,
     lineStarts: starts(body),
   }
   const diagnostics = [
-    ...checkHeadings(context),
+    // Standalone pages such as the about page own their heading structure.
+    ...(contentType === 'about' ? [] : checkHeadings(context)),
     ...checkCodeFences(context),
     ...checkCjkLatin(context),
     ...checkPunctuation(context),
-    ...checkFirstBlock(context),
+    ...checkMathSpacing(context),
+    ...checkBodyParagraph(context),
     ...checkDirectiveBalance(context),
   ]
-  if (contentType === 'posts') {
+  if (contentType === 'posts' && options.category === '题解') {
     const hasSection = /^ {0,3}##\s/m.test(context.masked)
     const hasStatement = /\*\*题意：\*\*/.test(context.body)
     if (hasSection && !hasStatement) {
