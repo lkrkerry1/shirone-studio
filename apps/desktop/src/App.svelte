@@ -37,6 +37,9 @@
   const currentType = $derived(
     current ? types.find((candidate) => candidate.id === current?.type) : undefined,
   )
+  const lintDiagnostics = $derived(
+    context && current ? context.lint.check(body, current.type) : [],
+  )
 
   onMount(() => {
     void boot()
@@ -248,6 +251,7 @@
                   body = next
                   dirty = true
                 }}
+                lintSource={(text) => context?.lint.check(text, current?.type ?? 'posts') ?? []}
               />
             </div>
           </div>
@@ -285,6 +289,7 @@
   <footer class="statusbar">
     <span>{current ? current.type : '未打开内容'}</span>
     <span>{dirty ? '● 未保存' : '○ 已保存'}</span>
+    <span>{lintDiagnostics.length} 条排版提示</span>
     <span>{layout?.contentRoot ?? ''}</span>
   </footer>
 

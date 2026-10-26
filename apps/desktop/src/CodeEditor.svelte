@@ -4,11 +4,14 @@
   import { markdown } from '@codemirror/lang-markdown'
   import { EditorState } from '@codemirror/state'
   import { EditorView } from '@codemirror/view'
+  import { lintGutter, linter } from '@codemirror/lint'
+  import type { LintDiagnostic } from '@shirone-studio/contracts'
 
-  let { value, docId, onChange }: {
+  let { value, docId, onChange, lintSource }: {
     value: string
     docId: string
     onChange: (value: string) => void
+    lintSource?: (value: string) => LintDiagnostic[]
   } = $props()
 
   let host: HTMLDivElement
@@ -16,18 +19,47 @@
   let lastDocId = ''
 
   onMount(() => {
-    view = new EditorView({
-      state: EditorState.create({
-        doc: value,
-        extensions: [
-          basicSetup,
-          markdown(),
-          EditorView.lineWrapping,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) onChange(update.state.doc.toString())
-          }),
-        ],
+    const extensions = [
+      basicSetup,
+      markdown(),
+      EditorView.lineWrapping,
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) onChange(update.state.doc.toString())
       }),
+    ]
+    if (lintSource) {
+      extensions.push(
+        lintGutter(),
+        linter(
+          (current) =>
+            lintSource(current.state.doc.toString()).map((item) => ({
+              from: Math.min(item.from, item.to),
+              to: Math.max(item.from, item.to),
+              severity: item.severity,
+              message: item.message,
+              actions: item.fix
+                ? [
+                    {
+                      name: item.fix.label,
+                      apply: (target: EditorView) => {
+                        target.dispatch({
+                          changes: {
+                            from: item.fix!.from,
+                            to: item.fix!.to,
+                            insert: item.fix!.insert,
+                          },
+                        })
+                      },
+                    },
+                  ]
+                : undefined,
+            })),
+          { delay: 250 },
+        ),
+      )
+    }
+    view = new EditorView({
+      state: EditorState.create({ doc: value, extensions }),
       parent: host,
     })
     return () => view?.destroy()

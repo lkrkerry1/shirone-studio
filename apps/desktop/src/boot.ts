@@ -19,6 +19,7 @@ import moments from '@shirone-studio/plugin-content-moments'
 import about from '@shirone-studio/plugin-content-about'
 import templates from '@shirone-studio/plugin-template-posts-algorithm'
 import platforms from '@shirone-studio/plugin-platforms'
+import lint from '@shirone-studio/plugin-lint'
 import composeSource from '../../../compose.yml?raw'
 
 const registry: Record<string, PluginDefinition<unknown>> = {
@@ -30,6 +31,7 @@ const registry: Record<string, PluginDefinition<unknown>> = {
   '@shirone-studio/plugin-content-about': about as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-template-posts-algorithm': templates as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-platforms': platforms as unknown as PluginDefinition<unknown>,
+  '@shirone-studio/plugin-lint': lint as unknown as PluginDefinition<unknown>,
 }
 
 export interface StudioApp {

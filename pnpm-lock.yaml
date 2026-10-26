@@ -190,6 +190,9 @@ importers:
       '@codemirror/language':
         specifier: ^6.10.0
         version: 6.13.1
+      '@codemirror/lint':
+        specifier: ^6.8.0
+        version: 6.9.7
       '@codemirror/state':
         specifier: ^6.5.0
         version: 6.7.6
@@ -220,6 +223,9 @@ importers:
       '@shirone-studio/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugins/host
+      '@shirone-studio/plugin-lint':
+        specifier: workspace:*
+        version: link:../../packages/plugins/lint
       '@shirone-studio/plugin-platforms':
         specifier: workspace:*
         version: link:../../packages/plugins/platforms
@@ -376,6 +382,24 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.0.0
         version: 2.12.4
+
+  packages/plugins/lint:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/plugin-syntax-shirone':
+        specifier: workspace:*
+        version: link:../syntax-shirone
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
 
   packages/plugins/platforms:
     dependencies:
