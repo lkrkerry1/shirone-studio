@@ -6,6 +6,7 @@ import remarkDirective from 'remark-directive'
 import remarkRehype from 'remark-rehype'
 import rehypeKatex from 'rehype-katex'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeRaw from 'rehype-raw'
 import rehypeStringify from 'rehype-stringify'
 
 function directiveHandler(state: any, node: any) {
@@ -26,11 +27,13 @@ const processor = unified()
   .use(remarkMath)
   .use(remarkDirective)
   .use(remarkRehype as never, {
+    allowDangerousHtml: true,
     handlers: {
       containerDirective: directiveHandler,
       leafDirective: directiveHandler,
     },
   } as never)
+  .use(rehypeRaw)
   .use(rehypeKatex)
   .use(rehypeHighlight, { detect: false, ignoreMissing: true })
   .use(rehypeStringify)

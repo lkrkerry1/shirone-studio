@@ -8,7 +8,9 @@
     ProjectLayout,
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
+  import { convertFileSrc } from '@tauri-apps/api/core'
   import { createApp, detectLayout, type StudioApp } from './boot'
+  import { resolveAssetPath } from './assets'
   import { loadProjectRoot, saveProjectRoot } from './settings'
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
@@ -168,6 +170,22 @@
     }
   }
 
+  function resolvePreviewAsset(src: string): string {
+    if (!layout || !current) return src
+    const path = resolveAssetPath({
+      src,
+      layoutRoot: layout.root,
+      contentPath: current.path,
+      publicRoot: layout.publicRoot,
+    })
+    if (!path) return src
+    try {
+      return convertFileSrc(path)
+    } catch {
+      return src
+    }
+  }
+
   function handleKey(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
       event.preventDefault()
@@ -301,7 +319,7 @@
                   onChange={updateFrontmatter}
                 />
               {:else}
-                <PreviewPane html={previewHtml} />
+                <PreviewPane html={previewHtml} resolveAsset={resolvePreviewAsset} />
               {/if}
             </aside>
           {/if}

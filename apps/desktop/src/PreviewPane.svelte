@@ -4,7 +4,10 @@
   import { onMount } from 'svelte'
   import mermaid from 'mermaid'
 
-  let { html }: { html: string } = $props()
+  let { html, resolveAsset }: {
+    html: string
+    resolveAsset?: (src: string) => string
+  } = $props()
   let container: HTMLDivElement
   let lastRendered = ''
 
@@ -20,6 +23,16 @@
     if (!container || html === lastRendered) return
     lastRendered = html
     queueMicrotask(async () => {
+      if (resolveAsset) {
+        for (const node of container.querySelectorAll('img[src], video[src], audio[src], source[src]')) {
+          const src = node.getAttribute('src')
+          if (src) node.setAttribute('src', resolveAsset(src))
+        }
+        for (const node of container.querySelectorAll('video[poster]')) {
+          const poster = node.getAttribute('poster')
+          if (poster) node.setAttribute('poster', resolveAsset(poster))
+        }
+      }
       for (const code of container.querySelectorAll('pre > code.language-mermaid')) {
         const pre = code.parentElement
         if (!pre) continue
@@ -48,6 +61,21 @@
     padding: 18px 22px 80px;
     line-height: 1.8;
     font-size: 14px;
+  }
+
+  :global(.preview img),
+  :global(.preview video) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1em auto;
+    border-radius: 10px;
+  }
+
+  :global(.preview audio) {
+    display: block;
+    width: 100%;
+    margin: 1em 0;
   }
 
   :global(.preview h1),
