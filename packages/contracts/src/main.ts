@@ -1,4 +1,5 @@
 export * from './index'
+export * from './appearance'
 export * from './content'
 export * from './syntax'
 export * from './host'

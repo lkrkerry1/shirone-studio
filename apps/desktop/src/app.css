@@ -1,25 +1,9 @@
+/*
+ * Layout only. Colours, fonts and the editor theme live in
+ * `packages/plugins/appearance`, which injects the tokens below at startup.
+ */
 :root {
   color-scheme: light dark;
-  --surface: #f7f8fb;
-  --surface-2: #ffffff;
-  --border: #dfe3ea;
-  --text: #1c2430;
-  --muted: #667085;
-  --accent: #4f6bed;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: var(--text);
-  background: var(--surface);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #151a21;
-    --surface-2: #1b222b;
-    --border: #2b3542;
-    --text: #e7edf5;
-    --muted: #98a4b5;
-    --accent: #8fa7ff;
-  }
 }
 
 * {
@@ -33,5 +17,18 @@ body {
 }
 
 body {
+  font-family: var(--font-ui);
+  color: var(--text);
   background: var(--surface);
+}
+
+/*
+ * Native controls do not inherit the document font; without this the date and
+ * number inputs fall back to the system face and break the typography.
+ */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }

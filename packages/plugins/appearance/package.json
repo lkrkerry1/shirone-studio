@@ -1,0 +1,18 @@
+{
+  "name": "@shirone-studio/plugin-appearance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/view": "^6.36.0",
+    "@lezer/highlight": "^1.2.0",
+    "@shirone-studio/contracts": "workspace:*",
+    "@shirone-studio/kernel": "workspace:*",
+    "@shirone-studio/runtime": "workspace:*"
+  }
+}

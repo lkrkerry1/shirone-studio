@@ -55,8 +55,38 @@ plugins.
 | `lint` | `plugin-lint` | formatting diagnostics |
 | `preview` | `plugin-preview` | Markdown/KaTeX/Mermaid renderer |
 | `git` | `plugin-git` | Git contract, noop in v1 |
+| `appearance` | `runtime` | palette tokens, stylesheet and editor theme registry |
 
 Services use Cordis `Service`, so injection and disposal are handled by the kernel.
+
+## Appearance plugins
+
+All colours and typography live in `packages/plugins/appearance`; components only consume tokens
+(`var(--surface)`, `var(--editor-bg)`, ...) and never hard-code a palette. To restyle the studio,
+edit `studioTokens` / `studioDarkOverrides` / `editorTheme` there, or register another
+contribution:
+
+```ts
+ctx.appearance.register({
+  id: 'my-theme',
+  tokens: { '--accent': '#ff7a59', '--editor-gutter-bg': 'var(--surface-2)' },
+  css: '@media (prefers-color-scheme: dark) { :root { --accent: #ffb199; } }',
+  editorExtensions: [], // CodeMirror extensions appended to every editor
+})
+```
+
+Contributions are merged in registration order (later wins for tokens) and injected as a single
+stylesheet, so a theme plugin can override the default without touching the app shell.
+
+The default contribution mirrors the Shirone blog: the palette is the blog's Material 3 roles for
+seed hue 245 (regenerate with `resolveScheme(245, isDark, 'vibrant', '2025')`), the fonts are the
+blog's own Outfit / Yozai / JetBrains Mono files in `packages/plugins/appearance/fonts`, and the
+editor's syntax colours are its `github-light` / `github-dark` code theme, exposed as
+`--syntax-*` tokens.
+
+Fenced code blocks are highlighted by `@codemirror/lang-markdown` with the languages listed in
+`apps/desktop/src/languages.ts` (C++ first — the blog's posts are almost all C++). Add a language
+there, not in the theme plugin: the theme only supplies colours.
 
 ## Rules
 

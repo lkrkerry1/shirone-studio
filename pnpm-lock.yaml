@@ -184,6 +184,18 @@ importers:
       '@codemirror/commands':
         specifier: ^6.8.0
         version: 6.11.1
+      '@codemirror/lang-cpp':
+        specifier: ^6.0.0
+        version: 6.0.3
+      '@codemirror/lang-css':
+        specifier: ^6.3.0
+        version: 6.3.1
+      '@codemirror/lang-html':
+        specifier: ^6.4.0
+        version: 6.4.12
+      '@codemirror/lang-javascript':
+        specifier: ^6.2.0
+        version: 6.2.5
       '@codemirror/lang-markdown':
         specifier: ^6.3.0
         version: 6.5.2
@@ -205,6 +217,9 @@ importers:
       '@shirone-studio/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@shirone-studio/plugin-appearance':
+        specifier: workspace:*
+        version: link:../../packages/plugins/appearance
       '@shirone-studio/plugin-content-about':
         specifier: workspace:*
         version: link:../../packages/plugins/content-about
@@ -292,6 +307,27 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.9.1
+
+  packages/plugins/appearance:
+    dependencies:
+      '@codemirror/language':
+        specifier: ^6.10.0
+        version: 6.13.1
+      '@codemirror/view':
+        specifier: ^6.36.0
+        version: 6.43.15
+      '@lezer/highlight':
+        specifier: ^1.2.0
+        version: 1.2.5
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
 
   packages/plugins/content-about:
     dependencies:
@@ -531,6 +567,9 @@ packages:
 
   '@codemirror/commands@6.11.1':
     resolution: {integrity: sha512-O/4hG3SC1YwcmQ0d2UVNDs+AsaNWd1iHVxbTeEBuqH+6bExAiPK3iS/BvpY6rZGURALv4ZD3sIgcCmRvw3ehBg==}
+
+  '@codemirror/lang-cpp@6.0.3':
+    resolution: {integrity: sha512-URM26M3vunFFn9/sm6rzqrBzDgfWuDixp85uTY49wKudToc2jTHUrKIGGKs+QWND+YLofNNZpxcNGRynFJfvgA==}
 
   '@codemirror/lang-css@6.3.1':
     resolution: {integrity: sha512-kr5fwBGiGtmz6l0LSJIbno9QrifNMUusivHbnA1H6Dmqy4HZFte3UAICix1VuKo0lMPKQr2rqB+0BkKi/S3Ejg==}
@@ -913,6 +952,9 @@ packages:
 
   '@lezer/common@1.5.4':
     resolution: {integrity: sha512-xt3Q4z64xM+xhg4M7NXqw1N//1O74bUFo5kz6fwMeC4qwxSuRdwkYSmjcqCEEKYkNw5e67f2hcNqBoNERAEU0w==}
+
+  '@lezer/cpp@1.1.6':
+    resolution: {integrity: sha512-vh9gWWJOXFVY8HBHK3Twzq8MgwG2iN4GSyzBP9sCGTe37P15x2R14VaBQk0VA0ezTRN1KHYBBsHhvpGZ2Xy/pA==}
 
   '@lezer/css@1.3.9':
     resolution: {integrity: sha512-ZmzgvTOBdJWGIsY/ItAfN7UW8DV802oZG+jeG6E508SwEzz5YhuAajptpWPICvIyqYAD2+VjMdOS40GgGkyEOQ==}
@@ -2321,6 +2363,11 @@ snapshots:
       '@codemirror/view': 6.43.15
       '@lezer/common': 1.5.4
 
+  '@codemirror/lang-cpp@6.0.3':
+    dependencies:
+      '@codemirror/language': 6.13.1
+      '@lezer/cpp': 1.1.6
+
   '@codemirror/lang-css@6.3.1':
     dependencies:
       '@codemirror/autocomplete': 6.20.4
@@ -2587,6 +2634,12 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   '@lezer/common@1.5.4': {}
+
+  '@lezer/cpp@1.1.6':
+    dependencies:
+      '@lezer/common': 1.5.4
+      '@lezer/highlight': 1.2.5
+      '@lezer/lr': 1.4.11
 
   '@lezer/css@1.3.9':
     dependencies:
