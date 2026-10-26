@@ -20,6 +20,8 @@
     "@shirone-studio/kernel": "workspace:*",
     "@shirone-studio/plugin-content-posts": "workspace:*",
     "@shirone-studio/plugin-content-series": "workspace:*",
+    "@shirone-studio/plugin-content-moments": "workspace:*",
+    "@shirone-studio/plugin-content-about": "workspace:*",
     "@shirone-studio/plugin-frontmatter": "workspace:*",
     "@shirone-studio/plugin-host": "workspace:*",
     "@shirone-studio/plugin-template-posts-algorithm": "workspace:*",

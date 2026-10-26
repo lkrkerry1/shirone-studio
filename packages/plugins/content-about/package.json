@@ -1,0 +1,17 @@
+{
+  "name": "@shirone-studio/plugin-content-about",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@shirone-studio/contracts": "workspace:*",
+    "@shirone-studio/content-kit": "workspace:*",
+    "@shirone-studio/kernel": "workspace:*",
+    "@shirone-studio/plugin-frontmatter": "workspace:*",
+    "@shirone-studio/runtime": "workspace:*"
+  }
+}

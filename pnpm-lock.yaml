@@ -202,6 +202,12 @@ importers:
       '@shirone-studio/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@shirone-studio/plugin-content-about':
+        specifier: workspace:*
+        version: link:../../packages/plugins/content-about
+      '@shirone-studio/plugin-content-moments':
+        specifier: workspace:*
+        version: link:../../packages/plugins/content-moments
       '@shirone-studio/plugin-content-posts':
         specifier: workspace:*
         version: link:../../packages/plugins/content-posts
@@ -262,6 +268,42 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.9.1
+
+  packages/plugins/content-about:
+    dependencies:
+      '@shirone-studio/content-kit':
+        specifier: workspace:*
+        version: link:../../content-kit
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/plugin-frontmatter':
+        specifier: workspace:*
+        version: link:../frontmatter
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+
+  packages/plugins/content-moments:
+    dependencies:
+      '@shirone-studio/content-kit':
+        specifier: workspace:*
+        version: link:../../content-kit
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/plugin-frontmatter':
+        specifier: workspace:*
+        version: link:../frontmatter
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
 
   packages/plugins/content-posts:
     dependencies:

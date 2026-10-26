@@ -10,6 +10,8 @@ import host from '@shirone-studio/plugin-host'
 import frontmatter from '@shirone-studio/plugin-frontmatter'
 import posts from '@shirone-studio/plugin-content-posts'
 import series from '@shirone-studio/plugin-content-series'
+import moments from '@shirone-studio/plugin-content-moments'
+import about from '@shirone-studio/plugin-content-about'
 import templates from '@shirone-studio/plugin-template-posts-algorithm'
 import composeSource from '../../../compose.yml?raw'
 
@@ -18,6 +20,8 @@ const registry: Record<string, PluginDefinition<unknown>> = {
   '@shirone-studio/plugin-frontmatter': frontmatter as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-content-posts': posts as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-content-series': series as unknown as PluginDefinition<unknown>,
+  '@shirone-studio/plugin-content-moments': moments as unknown as PluginDefinition<unknown>,
+  '@shirone-studio/plugin-content-about': about as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-template-posts-algorithm': templates as unknown as PluginDefinition<unknown>,
 }
 

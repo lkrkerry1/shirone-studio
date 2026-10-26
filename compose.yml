@@ -8,4 +8,6 @@ groups:
       - name: '@shirone-studio/plugin-frontmatter'
       - name: '@shirone-studio/plugin-content-posts'
       - name: '@shirone-studio/plugin-content-series'
+      - name: '@shirone-studio/plugin-content-moments'
+      - name: '@shirone-studio/plugin-content-about'
       - name: '@shirone-studio/plugin-template-posts-algorithm'
