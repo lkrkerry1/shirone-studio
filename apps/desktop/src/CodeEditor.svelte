@@ -103,14 +103,15 @@
     // Images arrive as files, not text: store them and insert the Markdown the
     // callback returns. Clipboard images land at the cursor, drops where the
     // pointer is.
-    const insertImage = async (file: File, position: number): Promise<void> => {
+    const insertImage = async (file: File, from: number, to: number): Promise<void> => {
       if (!onImageFile) return
       try {
         const markdown = await onImageFile(file)
         if (!markdown) return
+        // Replace whatever was selected, exactly like typing would.
         editor.dispatch({
-          changes: { from: position, insert: markdown },
-          selection: { anchor: position + markdown.length },
+          changes: { from, to, insert: markdown },
+          selection: { anchor: from + markdown.length },
         })
       } catch (cause) {
         onImageError?.(cause)
@@ -121,7 +122,8 @@
       const file = findImageFile(event.clipboardData?.items)
       if (!file || !onImageFile) return
       event.preventDefault()
-      void insertImage(file, editor.state.selection.main.from)
+      const range = editor.state.selection.main
+      void insertImage(file, range.from, range.to)
     })
 
     editor.dom.addEventListener('drop', (event) => {
@@ -129,11 +131,10 @@
       const file = findImageFile(event.dataTransfer?.items)
       if (!file || !onImageFile) return
       event.preventDefault()
-      void insertImage(
-        file,
-        editor.posAtCoords({ x: event.clientX, y: event.clientY }) ??
-          editor.state.selection.main.from,
-      )
+      const range = editor.state.selection.main
+      const position =
+        editor.posAtCoords({ x: event.clientX, y: event.clientY }) ?? range.from
+      void insertImage(file, position, position)
     })
     return () => view?.destroy()
   })

@@ -166,8 +166,27 @@
     }
   }
 
-  async function open(type: ContentTypeDefinition, item: ContentSummary) {
+  async function open(
+    type: ContentTypeDefinition,
+    item: ContentSummary,
+    options: { discard?: boolean } = {},
+  ) {
     if (!context) return
+    // Switching documents must not silently drop an unsaved buffer. Try to save
+    // it first; if that fails (a conflict), refuse to switch.
+    if (dirty && current && !options.discard) {
+      if (saving) {
+        error = '正在保存，请稍候再切换文档。'
+        return
+      }
+      await save({ silent: true })
+      if (dirty) {
+        error = conflict
+          ? '当前文档有未保存的改动（文件已在外部修改），请先处理冲突。'
+          : '当前文档未能保存，请先处理上方错误。'
+        return
+      }
+    }
     try {
       const doc = await type.read(context, item.id)
       current = doc
@@ -179,6 +198,7 @@
       saveState = ''
       error = ''
       conflict = false
+      discardOnClose = false
       savedMtime = 0
       try {
         // Remember the on-disk timestamp so a later focus can spot edits made
@@ -285,6 +305,7 @@
       dirty = false
       frontmatterDirty = false
       conflict = false
+      discardOnClose = false
       saveState = options.silent ? '已自动保存' : '已保存'
       if (!options.silent) await refresh()
       try {
@@ -316,7 +337,7 @@
 
   function reloadFromDisk() {
     if (!currentType || !current) return
-    void open(currentType, current.meta)
+    void open(currentType, current.meta, { discard: true })
   }
 
   async function checkExternalChange(): Promise<void> {
@@ -356,15 +377,28 @@
     return () => clearTimeout(timer)
   })
 
+  // The preview pipeline is heavy and the rich editor rebuilds decorations on
+  // every keystroke; cache rendered tables by their source.
+  const tableCache = new Map<string, string>()
+
   function renderTableSnippet(markdown: string): string {
     if (!context) return ''
+    const cached = tableCache.get(markdown)
+    if (cached !== undefined) return cached
+    let html: string
     try {
-      return context.preview.render(markdown)
+      html = context.preview.render(markdown)
     } catch {
       // Keep the source visible rather than showing an empty block.
       const escaped = markdown.replace(/[&<>]/g, (char) => `&#${char.charCodeAt(0)};`)
-      return `<pre>${escaped}</pre>`
+      html = `<pre>${escaped}</pre>`
     }
+    if (tableCache.size >= 40) {
+      const oldest = tableCache.keys().next().value
+      if (oldest !== undefined) tableCache.delete(oldest)
+    }
+    tableCache.set(markdown, html)
+    return html
   }
 
   function resolvePreviewAsset(src: string): string {
@@ -405,6 +439,9 @@
     current = null
     body = ''
     dirty = false
+    conflict = false
+    discardOnClose = false
+    savedMtime = 0
     void boot()
   }
 </script>

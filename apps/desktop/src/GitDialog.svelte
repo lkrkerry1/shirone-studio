@@ -43,15 +43,21 @@
     }
   }
 
-  async function showDiff(path: string): Promise<void> {
-    diffPath = path
+  async function showDiff(entry: GitFileEntry): Promise<void> {
+    diffPath = entry.path
     diffText = '读取中…'
     try {
       // Untracked and worktree changes live in the worktree diff; fall back to
       // the index for staged-only entries.
-      let text = await context.git.diff(root, path, false)
-      if (text.trim() === '') text = await context.git.diff(root, path, true)
-      diffText = text
+      let text = await context.git.diff(root, entry.path, false)
+      if (text.trim() === '') text = await context.git.diff(root, entry.path, true)
+      if (text.trim() !== '') {
+        diffText = text
+      } else if (entry.index === '?' && entry.worktree === '?') {
+        diffText = '（未跟踪文件：提交时会整体加入）'
+      } else {
+        diffText = '（没有可显示的差异）'
+      }
     } catch (cause) {
       diffText = cause instanceof Error ? cause.message : String(cause)
     }
@@ -185,7 +191,7 @@
             <span class="badge" class:conflict={entry.index === 'U' || entry.worktree === 'U'}>
               {badge(entry)}
             </span>
-            <button class="path" onclick={() => void showDiff(entry.path)}>{entry.path}</button>
+            <button class="path" onclick={() => void showDiff(entry)}>{entry.path}</button>
           </div>
         {/each}
         {#if status.truncated}
