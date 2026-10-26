@@ -1,0 +1,14 @@
+{
+  "name": "@shirone-studio/kernel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "yaml": "^2.8.0"
+  }
+}
