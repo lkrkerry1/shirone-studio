@@ -1,5 +1,13 @@
 # Shirone Studio
 
+English | [简体中文](README.zh-CN.md)
+
+> [!IMPORTANT]
+> **This project is AI-generated.**
+> Every line of source code, test, document and commit message in this repository was produced by
+> **AI coding agents** working from human direction, review and decisions. It is not a hand-written
+> project: review and use it as AI-generated software. See [AI disclosure](#ai-disclosure).
+
 Standalone desktop editor for a [Shirone](https://github.com/LyraVoid/Shirone) site, built as
 Tauri 2 + Svelte 5 + TypeScript with a Cordis-style plugin architecture.
 
@@ -70,6 +78,13 @@ TEMP=.tmp TMP=.tmp pnpm build
    `public/`. Raw `<video>` / `<audio>` elements use the same Tauri asset protocol.
 7. “插件” shows the loaded plugins. Core content plugins are locked; optional plugins can be
    toggled without restarting the app.
+8. “Git” opens the repository panel: branch, changed files, per-file diff, staging, committing the
+   selected paths and pushing. Authentication is whatever Git already uses (credential manager or
+   SSH); prompts are disabled, so a missing credential shows up as an error, not a hang.
+9. Pasting or dropping an image stores it under the post's `img/` directory and inserts the
+   Markdown reference. Autosave writes 1.2s after the last edit; returning to the window reloads a
+   clean buffer that changed on disk, and an unsaved buffer raises a reload/overwrite banner instead
+   of overwriting it.
 
 ## Plugin composition
 
@@ -115,3 +130,27 @@ What the app does about it:
 
 Outside a sandbox any location works, for example
 `set SHIRONE_WEBVIEW_DATA_DIR=%LOCALAPPDATA%\shirone-studio\webview2`.
+
+## AI disclosure
+
+**This repository is an AI-generated project.**
+
+- **Scope.** Source code, tests, documentation, commit messages and release notes were all produced
+  by AI coding agents. The human role is to state requirements, review results, point out what is
+  wrong, and decide what ships.
+- **Process.** It was not generated in one shot: it grew through many review rounds, where the
+  human described a problem or expectation and the agent located the cause, changed the code,
+  added tests, committed and pushed.
+- **Caveat.** AI-generated code confidently ships plausible mistakes: missed edge cases,
+  hallucinated APIs, and paths that were reasoned about but never exercised. Review it yourself
+  before relying on it, especially anywhere that writes data (saving, Git operations, the file
+  system).
+- **Not a reference.** Please do not treat this repository as an example of human engineering
+  practice, team workflow or code review culture.
+- **Feedback.** Issues and pull requests are welcome; fixes may be written by an agent, but the
+  judgement and acceptance remain human.
+
+## License
+
+No open-source license is declared yet. All rights are reserved until one is added.
+
