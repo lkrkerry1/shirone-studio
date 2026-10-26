@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { onMount } from 'svelte'
   import { basicSetup } from 'codemirror'
   import { markdown } from '@codemirror/lang-markdown'
@@ -8,6 +8,7 @@
   import 'katex/dist/katex.min.css'
   import type { LintDiagnostic } from '@shirone-studio/contracts'
   import { codeLanguages } from './languages'
+  import { findImageFile } from './paste-image'
   import { richMarkdown } from './rich-markdown'
 
   let {
@@ -18,6 +19,8 @@
     extensions = [],
     rich = false,
     resolveAsset,
+    onImageFile,
+    onImageError,
   }: {
     value: string
     docId: string
@@ -29,6 +32,9 @@
     rich?: boolean
     /** Resolve image targets surfaced by the rich editor. */
     resolveAsset?: (src: string) => string
+    /** Store a pasted or dropped image and return the Markdown to insert. */
+    onImageFile?: (file: File) => Promise<string | null>
+    onImageError?: (cause: unknown) => void
   } = $props()
 
   let host: HTMLDivElement
@@ -85,6 +91,43 @@
     view = new EditorView({
       state: EditorState.create({ doc: value, extensions: editorExtensions }),
       parent: host,
+    })
+    const editor = view
+
+    // Images arrive as files, not text: store them and insert the Markdown the
+    // callback returns. Clipboard images land at the cursor, drops where the
+    // pointer is.
+    const insertImage = async (file: File, position: number): Promise<void> => {
+      if (!onImageFile) return
+      try {
+        const markdown = await onImageFile(file)
+        if (!markdown) return
+        editor.dispatch({
+          changes: { from: position, insert: markdown },
+          selection: { anchor: position + markdown.length },
+        })
+      } catch (cause) {
+        onImageError?.(cause)
+      }
+    }
+
+    editor.dom.addEventListener('paste', (event) => {
+      const file = findImageFile(event.clipboardData?.items)
+      if (!file || !onImageFile) return
+      event.preventDefault()
+      void insertImage(file, editor.state.selection.main.from)
+    })
+
+    editor.dom.addEventListener('drop', (event) => {
+      // A dropped file would otherwise navigate the webview away from the app.
+      const file = findImageFile(event.dataTransfer?.items)
+      if (!file || !onImageFile) return
+      event.preventDefault()
+      void insertImage(
+        file,
+        editor.posAtCoords({ x: event.clientX, y: event.clientY }) ??
+          editor.state.selection.main.from,
+      )
     })
     return () => view?.destroy()
   })
