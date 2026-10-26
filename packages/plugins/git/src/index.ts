@@ -1,10 +1,6 @@
 import { Service, definePlugin } from '@shirone-studio/kernel'
 import type { Context } from '@shirone-studio/kernel'
-
-export interface GitStatusEntry {
-  path: string
-  status: string
-}
+import type { GitCommitResult, GitPushResult, GitStatus } from '@shirone-studio/contracts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -13,25 +9,42 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /**
- * V1 contract only. The UI never assumes Git is present; a later plugin can
- * replace this service with an implementation backed by git2 or the `git` CLI.
+ * Project Git operations, backed by the host bridge (the `git` CLI lives behind
+ * Tauri). The UI keeps working when the project is not a repository: `status`
+ * simply reports `isRepo: false`.
  */
 export class GitService extends Service {
   constructor(ctx: Context) {
     super(ctx, 'git')
   }
 
-  async status(): Promise<GitStatusEntry[]> {
-    return []
+  status(root: string): Promise<GitStatus> {
+    return this.ctx.host.gitStatus(root)
   }
 
-  async commit(_message: string): Promise<{ committed: boolean }> {
-    return { committed: false }
+  stage(root: string, paths: string[]): Promise<GitStatus> {
+    return this.ctx.host.gitStage(root, paths)
+  }
+
+  unstage(root: string, paths: string[]): Promise<GitStatus> {
+    return this.ctx.host.gitUnstage(root, paths)
+  }
+
+  commit(root: string, message: string, paths: string[]): Promise<GitCommitResult> {
+    return this.ctx.host.gitCommit(root, message, paths)
+  }
+
+  push(root: string): Promise<GitPushResult> {
+    return this.ctx.host.gitPush(root)
+  }
+
+  diff(root: string, path: string, staged = false): Promise<string> {
+    return this.ctx.host.gitDiff(root, path, staged)
   }
 }
 
 export const name = 'git'
-export const inject: string[] = []
+export const inject: string[] = ['host']
 
 export async function apply(ctx: Context): Promise<void> {
   await ctx.plugin(GitService)

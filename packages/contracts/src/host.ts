@@ -35,10 +35,25 @@ export interface HostBridge {
     content: string,
     expectedHash?: string,
   ): Promise<{ hash: string; mtimeMs: number }>
+  writeAsset(
+    root: string,
+    relativePath: string,
+    base64: string,
+  ): Promise<{ path: string; hash: string; size: number }>
   listDir(root: string, relativePath: string): Promise<DirEntry[]>
   stat(root: string, relativePath: string): Promise<FileStat>
   createDir(root: string, relativePath: string): Promise<void>
   httpFetch(url: string): Promise<string>
+  gitStatus(root: string): Promise<import('./git').GitStatus>
+  gitStage(root: string, paths: string[]): Promise<import('./git').GitStatus>
+  gitUnstage(root: string, paths: string[]): Promise<import('./git').GitStatus>
+  gitCommit(
+    root: string,
+    message: string,
+    paths: string[],
+  ): Promise<import('./git').GitCommitResult>
+  gitPush(root: string): Promise<import('./git').GitPushResult>
+  gitDiff(root: string, path: string, staged: boolean): Promise<string>
 }
 
 export interface FrontmatterBridge {

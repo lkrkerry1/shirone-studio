@@ -1,5 +1,6 @@
 mod commands;
 mod fsutil;
+mod git;
 
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 
@@ -237,6 +238,13 @@ pub fn run() {
             commands::stat_path,
             commands::create_dir,
             commands::http_fetch,
+            commands::git_status,
+            commands::git_stage,
+            commands::git_unstage,
+            commands::git_commit,
+            commands::git_push,
+            commands::git_diff,
+            commands::write_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Shirone Studio");

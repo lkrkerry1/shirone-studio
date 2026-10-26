@@ -5,6 +5,9 @@ import type {
   DirEntry,
   FileContent,
   FileStat,
+  GitCommitResult,
+  GitPushResult,
+  GitStatus,
   HostBridge,
   ProjectLayoutInfo,
 } from '@shirone-studio/contracts'
@@ -46,6 +49,18 @@ export class HostService extends Service implements HostBridge {
     return invoke<DirEntry[]>('list_dir', { root, path: relativePath })
   }
 
+  writeAsset(
+    root: string,
+    relativePath: string,
+    base64: string,
+  ): Promise<{ path: string; hash: string; size: number }> {
+    return invoke<[string, number]>('write_asset', {
+      root,
+      path: relativePath,
+      base64,
+    }).then(([hash, size]) => ({ path: relativePath, hash, size }))
+  }
+
   stat(root: string, relativePath: string): Promise<FileStat> {
     return invoke<FileStat>('stat_path', { root, path: relativePath })
   }
@@ -56,6 +71,30 @@ export class HostService extends Service implements HostBridge {
 
   httpFetch(url: string): Promise<string> {
     return invoke<string>('http_fetch', { url })
+  }
+
+  gitStatus(root: string): Promise<GitStatus> {
+    return invoke<GitStatus>('git_status', { root })
+  }
+
+  gitStage(root: string, paths: string[]): Promise<GitStatus> {
+    return invoke<GitStatus>('git_stage', { root, paths })
+  }
+
+  gitUnstage(root: string, paths: string[]): Promise<GitStatus> {
+    return invoke<GitStatus>('git_unstage', { root, paths })
+  }
+
+  gitCommit(root: string, message: string, paths: string[]): Promise<GitCommitResult> {
+    return invoke<GitCommitResult>('git_commit', { root, message, paths })
+  }
+
+  gitPush(root: string): Promise<GitPushResult> {
+    return invoke<GitPushResult>('git_push', { root })
+  }
+
+  gitDiff(root: string, path: string, staged: boolean): Promise<string> {
+    return invoke<string>('git_diff', { root, path, staged })
   }
 }
 

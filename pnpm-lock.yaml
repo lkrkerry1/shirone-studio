@@ -424,6 +424,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: 4.0.5
         version: 4.0.5
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
       '@shirone-studio/kernel':
         specifier: workspace:*
         version: link:../../kernel

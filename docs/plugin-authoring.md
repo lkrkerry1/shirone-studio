@@ -54,7 +54,7 @@ plugins.
 | `platforms` | `runtime` | problem metadata adapters |
 | `lint` | `plugin-lint` | formatting diagnostics |
 | `preview` | `plugin-preview` | Markdown/KaTeX/Mermaid renderer |
-| `git` | `plugin-git` | Git contract, noop in v1 |
+| `git` | `plugin-git` | project status, staging, commit and push through the host bridge |
 | `appearance` | `runtime` | palette tokens, stylesheet and editor theme registry |
 
 Services use Cordis `Service`, so injection and disposal are handled by the kernel.

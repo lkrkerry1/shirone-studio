@@ -1,6 +1,7 @@
 export * from './index'
 export * from './appearance'
 export * from './content'
+export * from './git'
 export * from './syntax'
 export * from './host'
 export * from './platform'

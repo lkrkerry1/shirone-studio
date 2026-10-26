@@ -1,6 +1,7 @@
 use crate::fsutil::{
     self, DirEntry, FileContent, FileStat, ProjectLayoutInfo,
 };
+use crate::git::{self, GitCommitResult, GitPushResult, GitStatus};
 
 #[tauri::command]
 pub fn detect_project_layout(root: String) -> Result<ProjectLayoutInfo, String> {
@@ -69,4 +70,52 @@ pub async fn http_fetch(url: String) -> Result<String, String> {
         .text()
         .await
         .map_err(|error| format!("Cannot read response: {error}"))
+}
+
+/// Run blocking work off the UI thread; git can take a moment on big trees.
+async fn run_blocking<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| format!("后台任务失败：{error}"))?
+}
+
+#[tauri::command]
+pub async fn git_status(root: String) -> Result<GitStatus, String> {
+    run_blocking(move || git::status(&root)).await
+}
+
+#[tauri::command]
+pub async fn git_stage(root: String, paths: Vec<String>) -> Result<GitStatus, String> {
+    run_blocking(move || git::stage(&root, &paths)).await
+}
+
+#[tauri::command]
+pub async fn git_unstage(root: String, paths: Vec<String>) -> Result<GitStatus, String> {
+    run_blocking(move || git::unstage(&root, &paths)).await
+}
+
+#[tauri::command]
+pub async fn git_commit(
+    root: String,
+    message: String,
+    paths: Vec<String>,
+) -> Result<GitCommitResult, String> {
+    run_blocking(move || git::commit(&root, &message, &paths)).await
+}
+
+#[tauri::command]
+pub async fn git_push(root: String) -> Result<GitPushResult, String> {
+    run_blocking(move || git::push(&root)).await
+}
+
+#[tauri::command]
+pub async fn git_diff(root: String, path: String, staged: bool) -> Result<String, String> {
+    run_blocking(move || git::diff(&root, &path, staged)).await
+}
+
+#[tauri::command]
+pub async fn write_asset(root: String, path: String, base64: String) -> Result<(String, u64), String> {
+    run_blocking(move || fsutil::write_asset(&root, &path, &base64)).await
 }
