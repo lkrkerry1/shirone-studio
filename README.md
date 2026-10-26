@@ -83,14 +83,34 @@ workspace packages; the app does not install remote plugin code in v1. See
 - [Plugin authoring](docs/plugin-authoring.md)
 - [Shirone syntax reference](docs/syntax-reference.md)
 
-## Known environment issue
+## WebView2 profile location
 
-On the Windows Insider build used during development (10.0.26300), WebView2 crashes in
-`msedge.dll` with `0x80000003` when any WebView2 host creates a controller. The installed runtime
-155.0.4283.62 and clean fixed-version runtimes 151.0.4129.107 and 156.0.4314.42 all reproduce
-it, so it is an OS/runtime compatibility problem rather than a project dependency. Edge 156
-headless rendering works on the same machine, which narrows the failure to WebView2 host
-creation. The Tauri window starts,
-but the webview is blank. On a normal Windows 11 machine with a working WebView2 runtime the
-same build is expected to run; if not, reinstall the Evergreen **Microsoft Edge WebView2
-Runtime**. All frontend, Rust filesystem, and plugin tests pass independently of that runtime.
+Launching the app from a sandboxed shell (the DSH harness shell is one) fails with
+`WebView2 error: WindowsError(0x8000FFFF)` and no window. `msedgewebview2.exe` itself aborts in
+`msedge.dll` with `0x80000003` (`STATUS_BREAKPOINT`, a failed Chromium `CHECK`). The sandbox only
+allows writes inside the workspace, and the WebView2 browser process cannot create or write its
+user-data profile outside of it.
+
+Evidence, all measured on the same build:
+
+- Inside the sandbox, a profile under `%LOCALAPPDATA%`, `%USERPROFILE%` or even `C:\Temp` crashes
+  the browser process; a profile inside the repository opens the window with two renderer
+  processes.
+- The same executable launched through Task Scheduler (outside the sandbox) with its default
+  `%LOCALAPPDATA%` profile opens the window immediately on the stock runtime 155.0.4283.62.
+- The runtime version is a red herring: 155 and 156, `--no-sandbox`, `--disable-gpu`,
+  `--disable-gpu-sandbox`, `--single-process` and disabling `RendererCodeIntegrity` all behave
+  the same, because the abort happens while the profile is opened, before the page loads.
+
+What the app does about it:
+
+- It builds the window against the first usable profile among `.shirone-webview2/` (workspace),
+  `~/.shirone-studio/webview2`, and `%TEMP%/shirone-studio-webview2`. Under `DSH_SHELL` the
+  workspace directory is tried first, so `pnpm tauri dev` works with no extra configuration.
+- `SHIRONE_WEBVIEW_DATA_DIR=<dir>` pins a single directory and disables the fallback;
+  `SHIRONE_WEBVIEW_DATA_DIR=default` uses Tauri's own app data folder.
+- If every candidate fails it prints each attempt and the failing HRESULT, shows a native dialog
+  when there is no console to print to, and exits with code `4` instead of panicking with `101`.
+
+Outside a sandbox any location works, for example
+`set SHIRONE_WEBVIEW_DATA_DIR=%LOCALAPPDATA%\shirone-studio\webview2`.
