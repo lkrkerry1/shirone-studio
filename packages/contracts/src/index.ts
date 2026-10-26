@@ -43,7 +43,9 @@ export interface ContentDocument {
   body?: string
   frontmatter?: Record<string, unknown>
   rawFrontmatter?: string
+  frontmatterDirty?: boolean
   data?: unknown
+  hash?: string
   meta: ContentSummary
 }
 

@@ -10,16 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "Shirone Studio",
-        "width": 1440,
-        "height": 900,
-        "minWidth": 1024,
-        "minHeight": 680
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

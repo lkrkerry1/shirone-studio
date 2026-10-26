@@ -221,6 +221,39 @@ importers:
         specifier: ^2.8.0
         version: 2.9.1
 
+  packages/plugins/content-posts:
+    dependencies:
+      '@shirone-studio/content-kit':
+        specifier: workspace:*
+        version: link:../../content-kit
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/plugin-frontmatter':
+        specifier: workspace:*
+        version: link:../frontmatter
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+
+  packages/plugins/content-series:
+    dependencies:
+      '@shirone-studio/content-kit':
+        specifier: workspace:*
+        version: link:../../content-kit
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+
   packages/plugins/frontmatter:
     dependencies:
       '@shirone-studio/contracts':
@@ -235,6 +268,18 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.9.1
+
+  packages/plugins/host:
+    dependencies:
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@tauri-apps/api':
+        specifier: ^2.0.0
+        version: 2.12.4
 
   packages/plugins/syntax-shirone:
     dependencies:
