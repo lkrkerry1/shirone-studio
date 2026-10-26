@@ -12,8 +12,7 @@
     "tauri": "pnpm --filter @shirone-studio/desktop tauri",
     "tauri:dev": "pnpm --filter @shirone-studio/desktop tauri dev",
     "tauri:build": "pnpm --filter @shirone-studio/desktop tauri build",
-    "docs:syntax": "tsx packages/plugins/syntax-shirone/src/generate.ts",
-    "docs:content-types": "tsx docs/generate-content-types.ts"
+    "docs:syntax": "tsx packages/plugins/syntax-shirone/src/generate.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

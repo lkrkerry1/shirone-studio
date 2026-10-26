@@ -9,17 +9,21 @@ pub fn run() {
         .setup(|app| {
             // Keep WebView2 state in the user's home folder. Tauri's default
             // app_local_data_dir can be blocked by restricted desktop tokens.
-            let home = std::env::var_os("USERPROFILE")
-                .or_else(|| std::env::var_os("HOME"))
-                .ok_or_else(|| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::NotFound,
-                        "Cannot resolve home directory",
-                    )
-                })?;
-            let data_dir = std::path::PathBuf::from(home)
-                .join(".shirone-studio")
-                .join("webview2");
+            let data_dir = if let Some(path) = std::env::var_os("SHIRONE_WEBVIEW_DATA_DIR") {
+                std::path::PathBuf::from(path)
+            } else {
+                let home = std::env::var_os("USERPROFILE")
+                    .or_else(|| std::env::var_os("HOME"))
+                    .ok_or_else(|| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "Cannot resolve home directory",
+                        )
+                    })?;
+                std::path::PathBuf::from(home)
+                    .join(".shirone-studio")
+                    .join("webview2")
+            };
             std::fs::create_dir_all(&data_dir)?;
 
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
