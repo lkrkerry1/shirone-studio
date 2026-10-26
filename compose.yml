@@ -1,0 +1,4 @@
+# Shirone Studio plugin composition.
+# Groups and plugin entries are expanded by packages/kernel.
+# Plugin configs are validated by each plugin's Config schema.
+groups: []

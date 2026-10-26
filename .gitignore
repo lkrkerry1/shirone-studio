@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.vite/
+*.log
+
+# Tauri
+**/src-tauri/target/
+**/src-tauri/gen/schemas/
+**/src-tauri/gen/android/
+**/src-tauri/gen/apple/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

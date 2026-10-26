@@ -1,0 +1,24 @@
+{
+  "name": "shirone-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "dev": "pnpm --filter @shirone-studio/desktop dev",
+    "build": "pnpm --filter @shirone-studio/desktop build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "tauri": "pnpm --filter @shirone-studio/desktop tauri",
+    "tauri:dev": "pnpm --filter @shirone-studio/desktop tauri dev",
+    "tauri:build": "pnpm --filter @shirone-studio/desktop tauri build",
+    "docs:syntax": "tsx packages/plugins/syntax-shirone/src/generate.ts",
+    "docs:content-types": "tsx docs/generate-content-types.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.0.0"
+  }
+}
