@@ -13,3 +13,4 @@ groups:
       - name: '@shirone-studio/plugin-template-posts-algorithm'
       - name: '@shirone-studio/plugin-platforms'
       - name: '@shirone-studio/plugin-lint'
+      - name: '@shirone-studio/plugin-preview'

@@ -13,6 +13,7 @@
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
+  import PreviewPane from './PreviewPane.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
@@ -29,6 +30,7 @@
   let error = $state('')
   let saveState = $state('')
   let showInfo = $state(true)
+  let rightTab = $state<'info' | 'preview'>('info')
   let originalBody = $state('')
   let frontmatterDirty = $state(false)
   let updatedAuto = $state(true)
@@ -40,6 +42,16 @@
   const lintDiagnostics = $derived(
     context && current ? context.lint.check(body, current.type) : [],
   )
+
+  const previewHtml = $derived.by(() => {
+    if (!context || !current || !currentType?.supports.preview) return ''
+    try {
+      return context.preview.render(body)
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause)
+      return `<p>预览失败：${message}</p>`
+    }
+  })
 
   onMount(() => {
     void boot()
@@ -234,7 +246,7 @@
           <div class="docstatus">
             {dirty ? '未保存' : saveState || '已同步'}
             <button class="secondary compact" onclick={() => (showInfo = !showInfo)}>
-              {showInfo ? '隐藏信息' : '文章信息'}
+              {showInfo ? '隐藏面板' : '内容面板'}
             </button>
           </div>
         </div>
@@ -257,20 +269,35 @@
           </div>
           {#if showInfo && currentType}
             <aside class="info-column">
-              <div class="info-head">
-                <strong>文章信息</strong>
-                {#if currentType.fields?.some((field) => field.key === 'updated')}
-                  <label class="auto-toggle">
-                    <input type="checkbox" bind:checked={updatedAuto} />
-                    自动修改于
-                  </label>
-                {/if}
+              <div class="right-tabs">
+                <button
+                  class:active={rightTab === 'info'}
+                  onclick={() => (rightTab = 'info')}>内容信息</button
+                >
+                <button
+                  class:active={rightTab === 'preview'}
+                  disabled={!currentType.supports.preview}
+                  onclick={() => (rightTab = 'preview')}>预览</button
+                >
               </div>
-              <ContentInfoPanel
-                fields={currentType.fields ?? []}
-                value={current.frontmatter ?? {}}
-                onChange={updateFrontmatter}
-              />
+              {#if rightTab === 'info'}
+                <div class="info-head">
+                  <strong>{currentType.label}</strong>
+                  {#if currentType.fields?.some((field) => field.key === 'updated')}
+                    <label class="auto-toggle">
+                      <input type="checkbox" bind:checked={updatedAuto} />
+                      自动修改于
+                    </label>
+                  {/if}
+                </div>
+                <ContentInfoPanel
+                  fields={currentType.fields ?? []}
+                  value={current.frontmatter ?? {}}
+                  onChange={updateFrontmatter}
+                />
+              {:else}
+                <PreviewPane html={previewHtml} />
+              {/if}
             </aside>
           {/if}
         </div>
@@ -514,6 +541,27 @@
     min-height: 0;
     border-left: 1px solid var(--border);
     background: var(--surface-2);
+  }
+
+  .right-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .right-tabs button {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .right-tabs button.active {
+    border-bottom-color: var(--accent);
+    color: var(--text);
   }
 
   .info-head {
