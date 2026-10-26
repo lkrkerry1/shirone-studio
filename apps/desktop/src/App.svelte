@@ -61,6 +61,8 @@
   let conflict = $state(false)
   let savedMtime = $state(0)
   let closing = $state(false)
+  /** Set when a close attempt could not save; the next close discards instead. */
+  let discardOnClose = false
 
   const groups = $derived([...new Set(types.map((type) => type.group))])
   const currentType = $derived(
@@ -91,16 +93,26 @@
     let unlisten: (() => void) | undefined
     void getCurrentWindow()
       .onCloseRequested(async (event) => {
-        if (closing || !dirty || !context || !current) return
+        // Nothing to lose: let the window close normally.
+        if (!dirty) return
         event.preventDefault()
+        // A second attempt (or a stuck save) must never trap the user.
+        if (closing || discardOnClose) {
+          await getCurrentWindow().destroy()
+          return
+        }
         closing = true
         try {
           await save({ silent: true })
-          if (!dirty) await getCurrentWindow().close()
-        } catch (cause) {
-          error = cause instanceof Error ? cause.message : String(cause)
         } finally {
           closing = false
+        }
+        if (!dirty) {
+          discardOnClose = false
+          await getCurrentWindow().destroy()
+        } else {
+          discardOnClose = true
+          error = '内容未能保存。再次点击关闭将丢弃未保存的改动。'
         }
       })
       .then((stop) => {
