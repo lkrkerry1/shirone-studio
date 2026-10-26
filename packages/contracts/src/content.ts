@@ -1,4 +1,4 @@
-import type { ContentDocument, ContentTypeDefinition, DataContentType, ProjectLayout } from './index'
+import type { ContentTypeDefinition } from './index'
 
 export interface DataDocument {
   type: string
@@ -29,4 +29,11 @@ export function defineDataContentType<T extends DataContentType>(type: T): T {
   return type
 }
 
-export type { ContentDocument, ContentTypeDefinition, ProjectLayout }
+export type {
+  ContentDocument,
+  ContentDraft,
+  ContentSummary,
+  ContentTypeDefinition,
+  FieldDefinition,
+  ProjectLayout,
+} from './index'

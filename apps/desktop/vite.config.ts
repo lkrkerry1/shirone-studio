@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    fs: {
+      // compose.yml lives at the workspace root, one level above the app.
+      allow: ['../../..'],
+    },
     watch: {
       // Rust writes PDB/lock files while cargo builds; watching target triggers EBUSY.
       ignored: ['**/src-tauri/**'],

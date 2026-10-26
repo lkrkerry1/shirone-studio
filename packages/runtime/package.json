@@ -8,6 +8,7 @@
   },
   "types": "./src/index.ts",
   "dependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
     "@shirone-studio/contracts": "workspace:*",
     "@shirone-studio/kernel": "workspace:*"
   }

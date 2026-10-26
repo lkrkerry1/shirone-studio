@@ -1,4 +1,10 @@
 # Shirone Studio plugin composition.
 # Groups and plugin entries are expanded by packages/kernel.
 # Plugin configs are validated by each plugin's Config schema.
-groups: []
+groups:
+  - id: core
+    plugins:
+      - name: '@shirone-studio/plugin-host'
+      - name: '@shirone-studio/plugin-frontmatter'
+      - name: '@shirone-studio/plugin-content-posts'
+      - name: '@shirone-studio/plugin-content-series'

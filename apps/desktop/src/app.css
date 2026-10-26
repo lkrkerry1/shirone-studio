@@ -5,6 +5,7 @@
   --border: #dfe3ea;
   --text: #1c2430;
   --muted: #667085;
+  --accent: #4f6bed;
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
   background: var(--surface);
@@ -17,6 +18,7 @@
     --border: #2b3542;
     --text: #e7edf5;
     --muted: #98a4b5;
+    --accent: #8fa7ff;
   }
 }
 

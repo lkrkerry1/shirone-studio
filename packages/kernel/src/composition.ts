@@ -41,16 +41,17 @@ export function parseComposition(source: string): Composition {
 function validateGroup(input: unknown): PluginGroup {
   if (!input || typeof input !== 'object') throw new Error('plugin group must be a mapping')
   const group = input as Record<string, unknown>
-  if (typeof group.id !== 'string' || group.id.length === 0) {
+  const id = group.id
+  if (typeof id !== 'string' || id.length === 0) {
     throw new Error('plugin group needs a non-empty id')
   }
   if (!Array.isArray(group.plugins)) {
-    throw new Error(`plugin group "${group.id}" needs a plugins array`)
+    throw new Error(`plugin group "${id}" needs a plugins array`)
   }
   return {
-    id: group.id,
+    id,
     disabled: group.disabled === true,
-    plugins: group.plugins.map((entry) => validateEntry(entry, group.id)),
+    plugins: group.plugins.map((entry) => validateEntry(entry, id)),
   }
 }
 

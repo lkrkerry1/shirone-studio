@@ -12,6 +12,9 @@ export type {
   Validation,
 } from '@shirone-studio/contracts/content'
 
+// Keep the public type surface available for plugins that only use content kit.
+export type { FieldDefinition, ProjectLayout } from '@shirone-studio/contracts'
+
 export function joinPath(base: string, ...parts: string[]): string {
   return [base.replace(/[\\/]+$/, ''), ...parts].join('/')
 }

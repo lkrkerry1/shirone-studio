@@ -11,6 +11,7 @@
     "@shirone-studio/contracts": "workspace:*",
     "@shirone-studio/content-kit": "workspace:*",
     "@shirone-studio/kernel": "workspace:*",
+    "@shirone-studio/plugin-frontmatter": "workspace:*",
     "@shirone-studio/runtime": "workspace:*"
   }
 }

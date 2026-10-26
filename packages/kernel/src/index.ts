@@ -1,5 +1,4 @@
 import { Context, Service } from '@deepseek-ai/cordis'
-import type { ConfigSchema, PluginDefinition } from './index'
 
 export { Context, Service }
 export { parseComposition, flattenComposition } from './composition'
