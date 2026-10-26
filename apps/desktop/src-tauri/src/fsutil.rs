@@ -212,9 +212,27 @@ pub fn create_dir(root: &str, relative: &str) -> Result<(), String> {
     fs::create_dir_all(parent).map_err(|error| format!("Cannot create directory: {error}"))
 }
 
+/// Render an absolute path the way the frontend stores it: forward slashes and
+/// no Windows verbatim prefix.
+///
+/// `canonicalize` answers with `\\?\C:\...`; the frontend then joins that
+/// string with `/` and hands it back to the commands, and the verbatim prefix
+/// also turns asset URLs into unusable `//?/C:/...` values.
+fn portable_path(path: &Path) -> String {
+    let text = path.to_string_lossy();
+    let stripped = if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+        format!("//{rest}")
+    } else if let Some(rest) = text.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        text.into_owned()
+    };
+    stripped.replace('\\', "/")
+}
+
 pub fn detect_layout(root: &str) -> Result<ProjectLayoutInfo, String> {
     let root_path = canonical_root(root)?;
-    let root_str = root_path.to_string_lossy().replace('\\', "/");
+    let root_str = portable_path(&root_path);
     if root_path.join("shirones/content").is_dir() {
         return Ok(ProjectLayoutInfo {
             mode: "npm".into(),
@@ -246,6 +264,19 @@ mod tests {
         assert!(ensure_relative("../x").is_err());
         assert!(ensure_relative("a/../../x").is_err());
         assert!(ensure_relative("a/b").is_ok());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn portable_path_drops_the_verbatim_prefix() {
+        let plain = portable_path(Path::new(r"\\?\C:\Users\me\Blog"));
+        assert_eq!(plain, "C:/Users/me/Blog");
+
+        let share = portable_path(Path::new(r"\\?\UNC\server\share\blog"));
+        assert_eq!(share, "//server/share/blog");
+
+        let already = portable_path(Path::new(r"C:\Users\me\Blog"));
+        assert_eq!(already, "C:/Users/me/Blog");
     }
 
     #[test]
