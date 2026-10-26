@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { basicSetup } from 'codemirror'
   import { markdown } from '@codemirror/lang-markdown'
+  import { markdownLanguage } from '@codemirror/lang-markdown'
   import { Compartment, EditorState, type Extension } from '@codemirror/state'
   import { EditorView } from '@codemirror/view'
   import { lintGutter, linter } from '@codemirror/lint'
@@ -19,6 +20,7 @@
     extensions = [],
     rich = false,
     resolveAsset,
+    renderTable,
     onImageFile,
     onImageError,
   }: {
@@ -32,6 +34,8 @@
     rich?: boolean
     /** Resolve image targets surfaced by the rich editor. */
     resolveAsset?: (src: string) => string
+    /** Render a table snippet to HTML so tables show as tables while editing. */
+    renderTable?: (markdown: string) => string
     /** Store a pasted or dropped image and return the Markdown to insert. */
     onImageFile?: (file: File) => Promise<string | null>
     onImageError?: (cause: unknown) => void
@@ -41,15 +45,17 @@
   let view: EditorView | undefined
   let lastDocId = ''
   const richCompartment = new Compartment()
-  const richExtension = () => (rich ? richMarkdown({ resolveAsset }) : [])
+  const richExtension = () => (rich ? richMarkdown({ resolveAsset, renderTable }) : [])
 
   onMount(() => {
     // `extensions` comes after basicSetup so a theme can override its defaults.
     const editorExtensions = [
       basicSetup,
       // Fenced blocks get the language named on the fence; the highlight theme
-      // itself comes from the appearance plugin via `extensions`.
-      markdown({ codeLanguages }),
+      // itself comes from the appearance plugin via `extensions`. The GFM base
+      // parser is what makes tables and strikethrough parse at all — the
+      // default base is CommonMark.
+      markdown({ base: markdownLanguage, codeLanguages }),
       richCompartment.of(richExtension()),
       ...extensions,
       EditorView.lineWrapping,
@@ -137,9 +143,12 @@
   $effect(() => {
     const enabled = rich
     const resolver = resolveAsset
+    const tableRenderer = renderTable
     if (!view) return
     view.dispatch({
-      effects: richCompartment.reconfigure(enabled ? richMarkdown({ resolveAsset: resolver }) : []),
+      effects: richCompartment.reconfigure(
+        enabled ? richMarkdown({ resolveAsset: resolver, renderTable: tableRenderer }) : [],
+      ),
     })
   })
 

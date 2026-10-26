@@ -344,6 +344,17 @@
     return () => clearTimeout(timer)
   })
 
+  function renderTableSnippet(markdown: string): string {
+    if (!context) return ''
+    try {
+      return context.preview.render(markdown)
+    } catch {
+      // Keep the source visible rather than showing an empty block.
+      const escaped = markdown.replace(/[&<>]/g, (char) => `&#${char.charCodeAt(0)};`)
+      return `<pre>${escaped}</pre>`
+    }
+  }
+
   function resolvePreviewAsset(src: string): string {
     if (!layout || !current) return src
     const path = resolveAssetPath({
@@ -496,6 +507,7 @@
                 extensions={editorExtensions}
                 rich={richEditing}
                 resolveAsset={resolvePreviewAsset}
+                renderTable={renderTableSnippet}
                 onImageFile={insertImageFile}
                 onImageError={imageError}
               />

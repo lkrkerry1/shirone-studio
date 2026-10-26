@@ -6,6 +6,8 @@ import katex from 'katex'
 export interface RichMarkdownOptions {
   /** Resolve a Markdown image target to something the webview can load. */
   resolveAsset?: (src: string) => string
+  /** Render a Markdown table snippet to HTML; the preview pipeline provides it. */
+  renderTable?: (markdown: string) => string
 }
 
 const strong = Decoration.mark({ class: 'lp-strong' })
@@ -89,6 +91,28 @@ class RuleWidget extends WidgetType {
   }
 }
 
+class TableWidget extends WidgetType {
+  constructor(readonly html: string) {
+    super()
+  }
+
+  override eq(other: TableWidget): boolean {
+    return other.html === this.html
+  }
+
+  override toDOM(): HTMLElement {
+    const holder = document.createElement('div')
+    holder.className = 'lp-table'
+    holder.innerHTML = this.html.trim()
+    return holder
+  }
+
+  /** Let clicks land in the document so the table reveals its source. */
+  override ignoreEvent(): boolean {
+    return false
+  }
+}
+
 const HEADINGS: Record<string, string> = {
   ATXHeading1: 'lp-h1',
   ATXHeading2: 'lp-h2',
@@ -126,6 +150,7 @@ function buildDecorations(state: EditorState, options: RichMarkdownOptions): Dec
     value: Decoration | ReturnType<typeof Decoration.line>
   }> = []
   const codeRanges: Hidden[] = []
+  const tableRanges: Hidden[] = []
   const add = (from: number, to: number, value: Decoration): void => {
     if (to < from) return
     decorations.push({ from, to, value })
@@ -134,6 +159,28 @@ function buildDecorations(state: EditorState, options: RichMarkdownOptions): Dec
   syntaxTree(state).iterate({
     enter: (node) => {
         const name = node.name
+
+        // A table is replaced as a whole (or shown verbatim), so nothing inside
+        // it may add its own decorations.
+        if (tableRanges.some((range) => node.from >= range.from && node.to <= range.to)) return
+
+        if (name === 'Table') {
+          tableRanges.push({ from: node.from, to: node.to })
+          if (options.renderTable && !selectionTouches(state, node.from, node.to)) {
+            const source = state.doc.sliceString(node.from, node.to)
+            try {
+              add(
+                node.from,
+                node.to,
+                Decoration.replace({ widget: new TableWidget(options.renderTable(source)) }),
+              )
+            } catch {
+              // A renderer failure must leave the source readable, not break the field.
+            }
+          }
+          return
+        }
+
         const heading = HEADINGS[name]
         if (heading) {
           const line = state.doc.lineAt(node.from)
@@ -223,6 +270,7 @@ function buildDecorations(state: EditorState, options: RichMarkdownOptions): Dec
     const from = span.from
     const to = span.to
     if (codeRanges.some((range) => from >= range.from && to <= range.to)) continue
+    if (tableRanges.some((range) => from >= range.from && to <= range.to)) continue
     if (selectionTouches(state, from, to)) continue
     add(from, to, Decoration.replace({ widget: new MathWidget(span.latex, span.display) }))
   }
@@ -245,6 +293,14 @@ interface SyntaxChild {
   to: number
   firstChild: SyntaxChild | null
   nextSibling: SyntaxChild | null
+}
+
+/** Test seam: the decorations the editor would show for a given document. */
+export function richMarkdownDecorations(
+  state: EditorState,
+  options: RichMarkdownOptions = {},
+): DecorationSet {
+  return buildDecorations(state, options)
 }
 
 /**

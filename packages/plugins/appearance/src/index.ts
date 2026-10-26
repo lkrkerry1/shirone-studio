@@ -257,6 +257,32 @@ export const studioLivePreviewCss = `
   vertical-align: bottom;
 }
 .cm-editor .lp-math { padding: 0 2px; }
+.cm-editor .lp-table {
+  display: block;
+  width: 100%;
+  padding: 2px 0;
+  overflow-x: auto;
+  /* The editor line keeps whitespace: newlines inside the rendered HTML would
+     otherwise turn into blank lines above the table. */
+  white-space: normal;
+}
+.cm-editor .lp-table pre { white-space: pre-wrap; }
+.cm-editor .lp-table table {
+  border-collapse: collapse;
+  margin: 4px 0;
+}
+.cm-editor .lp-table th,
+.cm-editor .lp-table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.cm-editor .lp-table th {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+.cm-editor .lp-table p { margin: 0; }
 .cm-editor .lp-math-block {
   display: block;
   padding: 6px 0;
