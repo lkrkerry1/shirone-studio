@@ -98,6 +98,7 @@ workspace packages; the app does not install remote plugin code in v1. See
 - [Timeline data contract](docs/timeline-contract.md)
 - [Plugin authoring](docs/plugin-authoring.md)
 - [Shirone syntax reference](docs/syntax-reference.md)
+- [Signing the installers](docs/signing.md)
 
 ## WebView2 profile location
 
@@ -152,5 +153,6 @@ Outside a sandbox any location works, for example
 
 ## License
 
-No open-source license is declared yet. All rights are reserved until one is added.
+MIT — see [LICENSE](LICENSE). The project is AI-generated; the license covers the generated code as
+any other source.
 

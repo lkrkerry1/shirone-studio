@@ -112,6 +112,7 @@ TEMP=.tmp TMP=.tmp pnpm build
 - [时间线数据契约](docs/timeline-contract.md)
 - [插件编写](docs/plugin-authoring.md)
 - [Shirone 语法参考](docs/syntax-reference.md)
+- [签名安装包](docs/signing.md)
 
 ## WebView2 profile 位置
 
@@ -147,4 +148,4 @@ profile，会以 `WebView2 error: WindowsError(0x8000FFFF)` 失败且不打开�
 
 ## 许可证
 
-本仓库尚未声明开源许可证。在补充许可证之前，默认保留所有权利。
+MIT，见 [LICENSE](LICENSE)。项目由 AI 生成，许可证同样覆盖这些生成的代码。
