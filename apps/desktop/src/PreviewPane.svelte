@@ -155,4 +155,19 @@
     overflow: auto;
     padding: 8px;
   }
+
+  :global(.preview .media-embed) {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    margin: 1em 0;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #000;
+  }
+
+  :global(.preview .media-embed iframe) {
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
 </style>
