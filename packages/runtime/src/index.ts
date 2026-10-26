@@ -1,5 +1,6 @@
 export { runtimeVersion, getRuntimeInfo } from './info'
 export type { RuntimeInfo } from './info'
 export { ContentTypeRegistry } from './content-types'
+export { SyntaxRegistry } from './syntax'
 export { detectProjectLayout, contentPath, configPath } from './layout'
 export type { PathExists } from './layout'
