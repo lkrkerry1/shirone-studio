@@ -220,6 +220,9 @@ importers:
       '@shirone-studio/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugins/host
+      '@shirone-studio/plugin-platforms':
+        specifier: workspace:*
+        version: link:../../packages/plugins/platforms
       '@shirone-studio/plugin-template-posts-algorithm':
         specifier: workspace:*
         version: link:../../packages/plugins/template-posts-algorithm
@@ -373,6 +376,18 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.0.0
         version: 2.12.4
+
+  packages/plugins/platforms:
+    dependencies:
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
 
   packages/plugins/syntax-shirone:
     dependencies:

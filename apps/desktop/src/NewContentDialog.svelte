@@ -2,14 +2,16 @@
   import type {
     ContentTypeDefinition,
     FieldDefinition,
+    PlatformAdapter,
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
   import type { StudioApp } from './boot'
 
-  let { context, types, templates, onclose, oncreated }: {
+  let { context, types, templates, platforms, onclose, oncreated }: {
     context: StudioApp['context']
     types: ContentTypeDefinition[]
     templates: ContentTemplate[]
+    platforms: PlatformAdapter[]
     onclose: () => void
     oncreated: (type: ContentTypeDefinition, id: string) => void
   } = $props()
@@ -48,12 +50,49 @@
   let values = $state<Record<string, unknown>>({})
   let error = $state('')
   let busy = $state(false)
+  let platformId = $state('')
+  let platformInput = $state('')
+  let platformBusy = $state(false)
+  let platformMessage = $state('')
 
   const selected = $derived(entries.find((entry) => entry.id === entryId))
 
   $effect(() => {
     if (!entryId && entries.length > 0) entryId = entries[0]!.id
   })
+
+  $effect(() => {
+    if (!platformId && platforms.length > 0) platformId = platforms[0]!.id
+  })
+
+  async function fetchPlatform() {
+    const adapter = platforms.find((candidate) => candidate.id === platformId)
+    if (!adapter) return
+    const ref = adapter.parseInput(platformInput)
+    if (!ref) {
+      platformMessage = '无法识别这个题号或 URL'
+      return
+    }
+    try {
+      platformBusy = true
+      platformMessage = '获取中…'
+      const meta = await adapter.fetchProblem(context.host, ref)
+      values = {
+        ...values,
+        title: adapter.suggestTitle(meta),
+        slug: adapter.suggestSlug(meta),
+        tags: adapter.suggestedTags(meta).join(', '),
+        problemUrl: meta.url,
+        platformName: adapter.name,
+        problemId: meta.problemId,
+      }
+      platformMessage = `已填入：${meta.displayTitle}`
+    } catch (cause) {
+      platformMessage = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      platformBusy = false
+    }
+  }
 
   function choose(id: string) {
     entryId = id
@@ -123,6 +162,26 @@
 
     {#if selected?.description}
       <p class="hint">{selected.description}</p>
+    {/if}
+
+    {#if selected?.typeId === 'posts' && platforms.length > 0}
+      <div class="platform-row">
+        <select bind:value={platformId} aria-label="平台">
+          {#each platforms as platform}
+            <option value={platform.id}>{platform.name}</option>
+          {/each}
+        </select>
+        <input
+          bind:value={platformInput}
+          placeholder="P2024 / 2261E / abc479_c / 题面 URL"
+          aria-label="题号或链接"
+          spellcheck="false"
+        />
+        <button class="secondary" disabled={platformBusy} onclick={fetchPlatform}>
+          {platformBusy ? '获取中…' : '获取'}
+        </button>
+      </div>
+      {#if platformMessage}<p class="hint">{platformMessage}</p>{/if}
     {/if}
 
     {#each selected?.fields ?? [] as field}
@@ -246,6 +305,13 @@
     margin: 0 0 10px;
     color: var(--muted);
     font-size: 12px;
+  }
+
+  .platform-row {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr) auto;
+    gap: 6px;
+    margin-bottom: 8px;
   }
 
   .required {

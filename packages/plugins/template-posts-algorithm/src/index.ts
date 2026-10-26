@@ -60,11 +60,14 @@ const singleProblem: ContentTemplate = {
   description: '来源引用 + 题意 + 思路 + C++ 代码',
   fields: commonFields,
   build(_ctx, input) {
+    const source = input.problemUrl
+      ? `> 来源：[${asString(input, 'platformName')} ${asString(input, 'problemId')}](${asString(input, 'problemUrl')})`
+      : '> 来源：'
     return baseDraft(
       input,
       '题解',
       [
-        '> 来源：',
+        source,
         '',
         '**题意：** ',
         '',

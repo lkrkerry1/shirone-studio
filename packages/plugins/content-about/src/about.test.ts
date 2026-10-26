@@ -33,6 +33,9 @@ class Host implements HostBridge {
       : { exists: false, isDirectory: false, size: 0, mtimeMs: 0 }
   }
   async createDir(): Promise<void> {}
+  async httpFetch(): Promise<string> {
+    return ''
+  }
 }
 
 const layout: ProjectLayout = {

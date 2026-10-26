@@ -37,3 +37,36 @@ pub fn stat_path(root: String, path: String) -> Result<FileStat, String> {
 pub fn create_dir(root: String, path: String) -> Result<(), String> {
     fsutil::create_dir(&root, &path)
 }
+
+#[tauri::command]
+pub async fn http_fetch(url: String) -> Result<String, String> {
+    let parsed = reqwest::Url::parse(&url).map_err(|error| format!("Invalid URL: {error}"))?;
+    let allowed = matches!(
+        parsed.host_str(),
+        Some("luogu.com.cn")
+            | Some("www.luogu.com.cn")
+            | Some("codeforces.com")
+            | Some("www.codeforces.com")
+            | Some("atcoder.jp")
+    );
+    if !allowed {
+        return Err("Host is not allowed".into());
+    }
+    let client = reqwest::Client::builder()
+        .user_agent("ShironeStudio/0.1 (+https://github.com/lkrkerry1/shirone-studio)")
+        .timeout(std::time::Duration::from_secs(12))
+        .build()
+        .map_err(|error| format!("Cannot create HTTP client: {error}"))?;
+    let response = client
+        .get(parsed)
+        .send()
+        .await
+        .map_err(|error| format!("Network error: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+    response
+        .text()
+        .await
+        .map_err(|error| format!("Cannot read response: {error}"))
+}

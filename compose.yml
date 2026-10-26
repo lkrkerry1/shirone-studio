@@ -11,3 +11,4 @@ groups:
       - name: '@shirone-studio/plugin-content-moments'
       - name: '@shirone-studio/plugin-content-about'
       - name: '@shirone-studio/plugin-template-posts-algorithm'
+      - name: '@shirone-studio/plugin-platforms'

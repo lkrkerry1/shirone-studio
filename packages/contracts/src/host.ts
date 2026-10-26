@@ -38,6 +38,7 @@ export interface HostBridge {
   listDir(root: string, relativePath: string): Promise<DirEntry[]>
   stat(root: string, relativePath: string): Promise<FileStat>
   createDir(root: string, relativePath: string): Promise<void>
+  httpFetch(url: string): Promise<string>
 }
 
 export interface FrontmatterBridge {

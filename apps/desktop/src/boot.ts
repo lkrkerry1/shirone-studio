@@ -4,8 +4,13 @@ import {
   parseComposition,
   type PluginDefinition,
 } from '@shirone-studio/kernel'
-import { ContentTypeRegistry, SyntaxRegistry, TemplateRegistry } from '@shirone-studio/runtime'
-import type { ProjectLayout } from '@shirone-studio/contracts'
+import {
+  ContentTypeRegistry,
+  PlatformRegistry,
+  SyntaxRegistry,
+  TemplateRegistry,
+} from '@shirone-studio/runtime'
+import type { HostBridge, ProjectLayout } from '@shirone-studio/contracts'
 import host from '@shirone-studio/plugin-host'
 import frontmatter from '@shirone-studio/plugin-frontmatter'
 import posts from '@shirone-studio/plugin-content-posts'
@@ -13,6 +18,7 @@ import series from '@shirone-studio/plugin-content-series'
 import moments from '@shirone-studio/plugin-content-moments'
 import about from '@shirone-studio/plugin-content-about'
 import templates from '@shirone-studio/plugin-template-posts-algorithm'
+import platforms from '@shirone-studio/plugin-platforms'
 import composeSource from '../../../compose.yml?raw'
 
 const registry: Record<string, PluginDefinition<unknown>> = {
@@ -23,6 +29,7 @@ const registry: Record<string, PluginDefinition<unknown>> = {
   '@shirone-studio/plugin-content-moments': moments as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-content-about': about as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-template-posts-algorithm': templates as unknown as PluginDefinition<unknown>,
+  '@shirone-studio/plugin-platforms': platforms as unknown as PluginDefinition<unknown>,
 }
 
 export interface StudioApp {
@@ -35,19 +42,13 @@ export async function createApp(): Promise<StudioApp> {
     contentTypes: ContentTypeRegistry
     syntax: SyntaxRegistry
     templates: TemplateRegistry
-    host: {
-      detectLayout(root: string): Promise<{
-        mode: 'npm' | 'source'
-        root: string
-        contentRoot: string
-        configRoot: string
-        publicRoot: string
-      }>
-    }
+    platforms: PlatformRegistry
+    host: HostBridge
   }
   await context.plugin(ContentTypeRegistry)
   await context.plugin(SyntaxRegistry)
   await context.plugin(TemplateRegistry)
+  await context.plugin(PlatformRegistry)
 
   const plugins = new PluginManager(context, registry, parseComposition(composeSource))
   await plugins.loadAll()
@@ -61,17 +62,7 @@ export async function createApp(): Promise<StudioApp> {
 }
 
 export async function detectLayout(context: Context, root: string): Promise<ProjectLayout> {
-  const info = await (context as unknown as {
-    host: {
-      detectLayout(root: string): Promise<{
-        mode: 'npm' | 'source'
-        root: string
-        contentRoot: string
-        configRoot: string
-        publicRoot: string
-      }>
-    }
-  }).host.detectLayout(root)
+  const info = await (context as unknown as { host: HostBridge }).host.detectLayout(root)
   return {
     root: info.root,
     mode: info.mode,

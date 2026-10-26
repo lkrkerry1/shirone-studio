@@ -4,6 +4,7 @@
     ContentDocument,
     ContentSummary,
     ContentTypeDefinition,
+    PlatformAdapter,
     ProjectLayout,
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
@@ -19,6 +20,7 @@
   let types = $state<ContentTypeDefinition[]>([])
   let summaries = $state<Record<string, ContentSummary[]>>({})
   let templates = $state<ContentTemplate[]>([])
+  let platforms = $state<PlatformAdapter[]>([])
   let showNew = $state(false)
   let current = $state<ContentDocument | null>(null)
   let body = $state('')
@@ -49,6 +51,7 @@
       layout = await detectLayout(app.context, projectRoot)
       types = app.context.contentTypes.list()
       templates = app.context.templates.list()
+      platforms = app.context.platforms.list()
       await refresh()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
@@ -290,6 +293,7 @@
       {context}
       {types}
       {templates}
+      {platforms}
       onclose={() => (showNew = false)}
       oncreated={async (type, id) => {
         showNew = false

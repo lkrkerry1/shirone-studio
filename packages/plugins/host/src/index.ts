@@ -53,6 +53,10 @@ export class HostService extends Service implements HostBridge {
   createDir(root: string, relativePath: string): Promise<void> {
     return invoke<void>('create_dir', { root, path: relativePath })
   }
+
+  httpFetch(url: string): Promise<string> {
+    return invoke<string>('http_fetch', { url })
+  }
 }
 
 export const name = 'host'

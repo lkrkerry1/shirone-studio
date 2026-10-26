@@ -74,6 +74,10 @@ class MockHost implements HostBridge {
   async createDir(_root: string, relativePath: string): Promise<void> {
     this.dirs.add(relativePath)
   }
+
+  async httpFetch(): Promise<string> {
+    return ''
+  }
 }
 
 const layout: ProjectLayout = {

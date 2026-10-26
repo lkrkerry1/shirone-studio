@@ -38,6 +38,7 @@ pub fn run() {
             commands::list_dir,
             commands::stat_path,
             commands::create_dir,
+            commands::http_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Shirone Studio");
