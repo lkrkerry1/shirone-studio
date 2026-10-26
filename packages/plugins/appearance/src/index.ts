@@ -366,10 +366,32 @@ export const studioEditorChromeCss = `
 .cm-editor .cm-panel.cm-search label { color: var(--text); }
 `
 
+export const studioScrollbarCss = `
+/* The palette is always dark, so native widgets (scrollbars, date pickers,
+   checkboxes) must not fall back to the light system rendering. */
+:root { color-scheme: dark; }
+/* WebView2 is Chromium, so the pseudo-elements are what actually paint. Keep
+   the thumb translucent and inset: the default light scrollbar is the loudest
+   thing on a dark page. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted) 26%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted) 48%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+`
+
 export const studioAppearance: AppearanceContribution = {
   id: 'studio-default',
   tokens: studioTokens,
-  css: `${studioFontFaces}\n\n${studioLivePreviewCss}\n\n${studioEditorChromeCss}\n\n${studioDarkOverrides}`,
+  css: `${studioFontFaces}\n\n${studioLivePreviewCss}\n\n${studioEditorChromeCss}\n\n${studioScrollbarCss}\n\n${studioDarkOverrides}`,
   editorExtensions: [editorTheme, syntaxHighlighting(markdownHighlight)],
 }
 
