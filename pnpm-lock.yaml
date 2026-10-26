@@ -221,6 +221,21 @@ importers:
         specifier: ^2.8.0
         version: 2.9.1
 
+  packages/plugins/frontmatter:
+    dependencies:
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+      yaml:
+        specifier: ^2.8.0
+        version: 2.9.1
+
   packages/plugins/syntax-shirone:
     dependencies:
       '@shirone-studio/contracts':
