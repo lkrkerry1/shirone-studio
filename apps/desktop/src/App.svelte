@@ -9,6 +9,7 @@
   import { createApp, detectLayout, type StudioApp } from './boot'
   import { loadProjectRoot, saveProjectRoot } from './settings'
   import CodeEditor from './CodeEditor.svelte'
+  import ContentInfoPanel from './ContentInfoPanel.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
@@ -21,8 +22,15 @@
   let loading = $state(true)
   let error = $state('')
   let saveState = $state('')
+  let showInfo = $state(true)
+  let originalBody = $state('')
+  let frontmatterDirty = $state(false)
+  let updatedAuto = $state(true)
 
   const groups = $derived([...new Set(types.map((type) => type.group))])
+  const currentType = $derived(
+    current ? types.find((candidate) => candidate.id === current?.type) : undefined,
+  )
 
   onMount(() => {
     void boot()
@@ -63,7 +71,10 @@
       const doc = await type.read(context, item.id)
       current = doc
       body = doc.body ?? ''
+      originalBody = body
       dirty = false
+      frontmatterDirty = false
+      updatedAuto = true
       saveState = ''
       error = ''
     } catch (cause) {
@@ -71,19 +82,58 @@
     }
   }
 
+  function dateString(value: unknown): string {
+    if (value instanceof Date) return value.toISOString().slice(0, 10)
+    return typeof value === 'string' ? value.slice(0, 10) : ''
+  }
+
+  function today(): string {
+    const now = new Date()
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  }
+
+  function updateFrontmatter(next: Record<string, unknown>) {
+    if (!current) return
+    if (next.updated !== current.frontmatter?.updated) updatedAuto = false
+    current = { ...current, frontmatter: next }
+    frontmatterDirty = true
+    dirty = true
+  }
+
   async function save() {
     if (!context || !current) return
     const type = types.find((candidate) => candidate.id === current?.type)
     if (!type) return
     try {
+      let frontmatter = current.frontmatter ?? {}
+      const bodyChanged = body !== originalBody
+      if (
+        current.type === 'posts' &&
+        bodyChanged &&
+        updatedAuto &&
+        frontmatter.draft !== true
+      ) {
+        const published = dateString(frontmatter.published)
+        if (published === '' || published <= today()) {
+          const nextUpdated = today()
+          if (dateString(frontmatter.updated) !== nextUpdated) {
+            frontmatter = { ...frontmatter, updated: nextUpdated }
+            frontmatterDirty = true
+          }
+        }
+      }
       const result = await type.save(context, {
         ...current,
         body,
-        frontmatterDirty: false,
+        frontmatter,
+        frontmatterDirty,
         rawFrontmatter: current.rawFrontmatter,
       })
-      current = { ...current, body, hash: result.hash }
+      current = { ...current, body, frontmatter, frontmatterDirty: false, hash: result.hash }
+      originalBody = body
       dirty = false
+      frontmatterDirty = false
       saveState = '已保存'
       await refresh()
     } catch (cause) {
@@ -171,20 +221,45 @@
           </div>
           <div class="docstatus">
             {dirty ? '未保存' : saveState || '已同步'}
+            <button class="secondary compact" onclick={() => (showInfo = !showInfo)}>
+              {showInfo ? '隐藏信息' : '文章信息'}
+            </button>
           </div>
         </div>
-        <div class="editor-note">
-          frontmatter 已隐藏，正文编辑器只显示 Markdown 内容。
-        </div>
-        <div class="editor">
-          <CodeEditor
-            value={body}
-            docId={current.path}
-            onChange={(next) => {
-              body = next
-              dirty = true
-            }}
-          />
+        <div class="docbody">
+          <div class="editor-column">
+            <div class="editor-note">
+              frontmatter 已隐藏，正文编辑器只显示 Markdown 内容。
+            </div>
+            <div class="editor">
+              <CodeEditor
+                value={body}
+                docId={current.path}
+                onChange={(next) => {
+                  body = next
+                  dirty = true
+                }}
+              />
+            </div>
+          </div>
+          {#if showInfo && currentType}
+            <aside class="info-column">
+              <div class="info-head">
+                <strong>文章信息</strong>
+                {#if currentType.fields?.some((field) => field.key === 'updated')}
+                  <label class="auto-toggle">
+                    <input type="checkbox" bind:checked={updatedAuto} />
+                    自动修改于
+                  </label>
+                {/if}
+              </div>
+              <ContentInfoPanel
+                fields={currentType.fields ?? []}
+                value={current.frontmatter ?? {}}
+                onChange={updateFrontmatter}
+              />
+            </aside>
+          {/if}
         </div>
       {:else}
         <div class="welcome">
@@ -377,8 +452,57 @@
   }
 
   .docstatus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 11px;
     color: var(--muted);
+  }
+
+  .compact {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .docbody {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .editor-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .info-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+
+  .info-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .auto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
   }
 
   .editor-note {
@@ -435,6 +559,16 @@
     background: var(--surface-2);
     color: var(--muted);
     font-size: 11px;
+  }
+
+  @media (max-width: 1100px) {
+    .docbody {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .info-column {
+      display: none;
+    }
   }
 
   @media (max-width: 900px) {
