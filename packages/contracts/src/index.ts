@@ -22,6 +22,11 @@ export interface FieldDefinition {
   description?: string
   options?: string[]
   itemFields?: FieldDefinition[]
+  /**
+   * Value the new-content form starts with. Called when the form opens, so a
+   * field can default to "now" instead of a constant baked at module load.
+   */
+  default?: () => unknown
 }
 
 export interface ContentSummary {

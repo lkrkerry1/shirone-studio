@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type {
   ContentContext,
   DirEntry,
@@ -70,5 +70,28 @@ describe('moments content type', () => {
     expect(file).toContain('桌面亮了。')
     const list = await momentsType.list(context)
     expect(list[0]).toMatchObject({ id: doc.id, subtitle: '工位' })
+  })
+
+  it('defaults the slug to HHMM and suffixes a same-minute collision', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 26, 22, 30, 0))
+    try {
+      const host = new Host()
+      const ctx = { ...context, host }
+      const first = await momentsType.create(ctx, { type: 'moments', body: 'a' })
+      expect(first.id).toBe('2026-10-26-2230')
+      const second = await momentsType.create(ctx, { type: 'moments', body: 'b' })
+      expect(second.id).toBe('2026-10-26-2230-2')
+
+      // An explicit slug is still the user's choice and must not be renamed.
+      await expect(
+        momentsType.create(ctx, { type: 'moments', slug: '2230', body: 'c' }),
+      ).rejects.toThrow('瞬间已存在')
+
+      const field = momentsType.newContent?.[0]?.fields?.find((item) => item.key === 'slug')
+      expect(field?.default?.()).toBe('2230')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

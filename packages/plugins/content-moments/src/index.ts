@@ -10,7 +10,7 @@ import type {
   FieldDefinition,
   ProjectLayout,
 } from '@shirone-studio/contracts'
-import { assertSlug, joinPath, nowWithOffset, relativeTo } from '@shirone-studio/content-kit'
+import { assertSlug, joinPath, nowWithOffset, relativeTo, timeSlug } from '@shirone-studio/content-kit'
 import type { SplitFrontmatter } from '@shirone-studio/plugin-frontmatter'
 
 export const MOMENT_ORDER = ['published', 'pinned', 'mood', 'tags', 'location', 'images']
@@ -118,13 +118,20 @@ export const momentsType: ContentTypeDefinition = {
   async create(ctx: unknown, draft: ContentDraft): Promise<ContentDocument> {
     const context = asContext(ctx)
     const root = context.layout.root
-    const slug = draft.slug
-    if (!slug) throw new Error('新建瞬间需要 slug')
-    assertSlug(slug)
+    const explicit = draft.slug?.trim()
+    const base = explicit || timeSlug()
+    assertSlug(base)
     const date = nowWithOffset().slice(0, 10)
-    const id = `${date}-${slug}`
-    const path = relativeTo(root, joinPath(basePath(context.layout), `${id}.md`))
-    if ((await context.host.stat(root, path)).exists) throw new Error(`瞬间已存在：${id}`)
+    // Several moments can be posted in one minute: an automatic slug falls back
+    // to a numeric suffix instead of failing, an explicit one still reports it.
+    let id = `${date}-${base}`
+    let path = relativeTo(root, joinPath(basePath(context.layout), `${id}.md`))
+    for (let attempt = 2; (await context.host.stat(root, path)).exists; attempt += 1) {
+      if (explicit) throw new Error(`瞬间已存在：${id}`)
+      if (attempt > 99) throw new Error(`瞬间已存在：${date}-${base}`)
+      id = `${date}-${base}-${attempt}`
+      path = relativeTo(root, joinPath(basePath(context.layout), `${id}.md`))
+    }
     const frontmatter = {
       published: nowWithOffset(),
       pinned: false,
@@ -157,7 +164,14 @@ export const momentsType: ContentTypeDefinition = {
       description: '短正文 + 心情 / 位置 / 标签',
       fields: [
         { key: 'body', label: '正文', type: 'text', required: true },
-        { key: 'slug', label: 'slug', type: 'string', required: true },
+        {
+          key: 'slug',
+          label: 'slug',
+          type: 'string',
+          required: true,
+          default: () => timeSlug(),
+          placeholder: '默认当前时间 HHMM',
+        },
         { key: 'mood', label: '心情图标', type: 'string' },
         { key: 'location', label: '位置', type: 'string' },
         { key: 'tags', label: '标签', type: 'tags' },

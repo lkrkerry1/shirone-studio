@@ -50,6 +50,13 @@ export function today(): string {
   return `${year}-${month}-${day}`
 }
 
+/** `HHMM` of local time: the default slug for a moment, unique per minute. */
+export function timeSlug(): string {
+  const now = new Date()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${pad(now.getHours())}${pad(now.getMinutes())}`
+}
+
 export function nowWithOffset(): string {
   const now = new Date()
   const pad = (value: number) => String(value).padStart(2, '0')

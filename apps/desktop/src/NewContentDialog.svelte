@@ -58,8 +58,30 @@
 
   const selected = $derived(entries.find((entry) => entry.id === entryId))
 
+  /** Values a form starts with, from the fields' `default` factories. */
+  function initialValues(entry: Entry | undefined): Record<string, unknown> {
+    const next: Record<string, unknown> = {}
+    for (const field of entry?.fields ?? []) {
+      if (typeof field.default !== 'function') continue
+      try {
+        next[field.key] = field.default()
+      } catch {
+        // A broken default must not stop the dialog from opening.
+      }
+    }
+    return next
+  }
+
   $effect(() => {
     if (!entryId && entries.length > 0) entryId = entries[0]!.id
+  })
+
+  // Switching the template resets the form to that template's defaults, so the
+  // moment slug can start at the current HHMM instead of an empty field.
+  $effect(() => {
+    const entry = entries.find((candidate) => candidate.id === entryId)
+    if (!entry) return
+    values = initialValues(entry)
   })
 
   $effect(() => {
@@ -97,7 +119,7 @@
 
   function choose(id: string) {
     entryId = id
-    values = {}
+    values = initialValues(entries.find((entry) => entry.id === id))
     error = ''
   }
 
