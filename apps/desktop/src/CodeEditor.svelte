@@ -1,34 +1,58 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { onMount } from 'svelte'
   import { basicSetup } from 'codemirror'
   import { markdown } from '@codemirror/lang-markdown'
-  import { EditorState } from '@codemirror/state'
+  import { Compartment, EditorState, type Extension } from '@codemirror/state'
   import { EditorView } from '@codemirror/view'
   import { lintGutter, linter } from '@codemirror/lint'
+  import 'katex/dist/katex.min.css'
   import type { LintDiagnostic } from '@shirone-studio/contracts'
+  import { codeLanguages } from './languages'
+  import { richMarkdown } from './rich-markdown'
 
-  let { value, docId, onChange, lintSource }: {
+  let {
+    value,
+    docId,
+    onChange,
+    lintSource,
+    extensions = [],
+    rich = false,
+    resolveAsset,
+  }: {
     value: string
     docId: string
     onChange: (value: string) => void
     lintSource?: (value: string) => LintDiagnostic[]
+    /** Theme and other extensions contributed by the appearance plugin. */
+    extensions?: Extension[]
+    /** Render Markdown in place instead of showing its source. */
+    rich?: boolean
+    /** Resolve image targets surfaced by the rich editor. */
+    resolveAsset?: (src: string) => string
   } = $props()
 
   let host: HTMLDivElement
   let view: EditorView | undefined
   let lastDocId = ''
+  const richCompartment = new Compartment()
+  const richExtension = () => (rich ? richMarkdown({ resolveAsset }) : [])
 
   onMount(() => {
-    const extensions = [
+    // `extensions` comes after basicSetup so a theme can override its defaults.
+    const editorExtensions = [
       basicSetup,
-      markdown(),
+      // Fenced blocks get the language named on the fence; the highlight theme
+      // itself comes from the appearance plugin via `extensions`.
+      markdown({ codeLanguages }),
+      richCompartment.of(richExtension()),
+      ...extensions,
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChange(update.state.doc.toString())
       }),
     ]
     if (lintSource) {
-      extensions.push(
+      editorExtensions.push(
         lintGutter(),
         linter(
           (current) =>
@@ -59,10 +83,21 @@
       )
     }
     view = new EditorView({
-      state: EditorState.create({ doc: value, extensions }),
+      state: EditorState.create({ doc: value, extensions: editorExtensions }),
       parent: host,
     })
     return () => view?.destroy()
+  })
+
+  // Reconfigure instead of recreating the view, so toggling keeps undo history
+  // and the cursor position.
+  $effect(() => {
+    const enabled = rich
+    const resolver = resolveAsset
+    if (!view) return
+    view.dispatch({
+      effects: richCompartment.reconfigure(enabled ? richMarkdown({ resolveAsset: resolver }) : []),
+    })
   })
 
   $effect(() => {
@@ -84,31 +119,11 @@
 
 <div class="editor-host" bind:this={host}></div>
 
+<!-- Size and overflow only; colours and typography come from the appearance plugin. -->
 <style>
   .editor-host {
     min-height: 0;
     height: 100%;
     overflow: auto;
-  }
-
-  :global(.editor-host .cm-editor) {
-    height: 100%;
-    font-size: 15px;
-    background: var(--surface);
-  }
-
-  :global(.editor-host .cm-scroller) {
-    font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
-    line-height: 1.65;
-  }
-
-  :global(.editor-host .cm-content) {
-    padding: 24px 32px 80px;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  :global(.editor-host .cm-focused) {
-    outline: none;
   }
 </style>

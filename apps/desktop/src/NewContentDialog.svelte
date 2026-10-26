@@ -6,6 +6,7 @@
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
   import type { StudioApp } from './boot'
+  import Select from './Select.svelte'
 
   let { context, types, templates, platforms, onclose, oncreated }: {
     context: StudioApp['context']
@@ -153,11 +154,12 @@
 
     <label class="field">
       <span>模板 / 内容类型</span>
-      <select value={entryId} onchange={(event) => choose(event.currentTarget.value)}>
-        {#each entries as entry}
-          <option value={entry.id}>{entry.label}</option>
-        {/each}
-      </select>
+      <Select
+        value={entryId}
+        ariaLabel="模板 / 内容类型"
+        options={entries.map((entry) => ({ value: entry.id, label: entry.label }))}
+        onchange={choose}
+      />
     </label>
 
     {#if selected?.description}
@@ -166,11 +168,12 @@
 
     {#if selected?.typeId === 'posts' && platforms.length > 0}
       <div class="platform-row">
-        <select bind:value={platformId} aria-label="平台">
-          {#each platforms as platform}
-            <option value={platform.id}>{platform.name}</option>
-          {/each}
-        </select>
+        <Select
+          value={platformId}
+          ariaLabel="平台"
+          options={platforms.map((platform) => ({ value: platform.id, label: platform.name }))}
+          onchange={(next) => (platformId = next)}
+        />
         <input
           bind:value={platformInput}
           placeholder="P2024 / 2261E / abc479_c / 题面 URL"
@@ -198,15 +201,15 @@
             oninput={(event) => update(field.key, event.currentTarget.value)}
           ></textarea>
         {:else if field.type === 'select'}
-          <select
+          <Select
             value={String(values[field.key] ?? '')}
-            onchange={(event) => update(field.key, event.currentTarget.value)}
-          >
-            <option value="">—</option>
-            {#each field.options ?? [] as option}
-              <option value={option}>{option}</option>
-            {/each}
-          </select>
+            ariaLabel={field.label}
+            options={[
+              { value: '', label: '—' },
+              ...(field.options ?? []).map((option) => ({ value: option, label: option })),
+            ]}
+            onchange={(next) => update(field.key, next)}
+          />
         {:else if field.type === 'number'}
           <input
             type="number"
@@ -241,7 +244,7 @@
     display: grid;
     place-items: center;
     padding: 24px;
-    background: rgb(0 0 0 / 0.35);
+    background: var(--overlay);
     z-index: 20;
   }
 
@@ -254,6 +257,8 @@
     border-radius: 14px;
     background: var(--surface-2);
     box-shadow: 0 24px 60px rgb(0 0 0 / 0.25);
+    /* Match the 13px control size used by this dialog's inputs. */
+    --select-font-size: 13px;
   }
 
   header,
@@ -290,7 +295,6 @@
   }
 
   input,
-  select,
   textarea {
     padding: 7px 9px;
     border: 1px solid var(--border);
@@ -319,7 +323,7 @@
   }
 
   .error {
-    color: #b42318;
+    color: var(--danger);
     font-size: 12px;
     white-space: pre-wrap;
   }

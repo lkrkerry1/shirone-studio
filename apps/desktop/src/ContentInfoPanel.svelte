@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FieldDefinition } from '@shirone-studio/contracts'
+  import Select from './Select.svelte'
 
   let { fields, value, onChange }: {
     fields: FieldDefinition[]
@@ -69,16 +70,15 @@
         onchange={(event) => update(field.key, event.currentTarget.checked)}
       />
     {:else if field.type === 'select'}
-      <select
+      <Select
         id={`fm-${field.key}`}
         value={stringValue(field.key)}
-        onchange={(event) => update(field.key, event.currentTarget.value)}
-      >
-        <option value="">—</option>
-        {#each field.options ?? [] as option}
-          <option value={option}>{option}</option>
-        {/each}
-      </select>
+        options={[
+          { value: '', label: '—' },
+          ...(field.options ?? []).map((option) => ({ value: option, label: option })),
+        ]}
+        onchange={(next) => update(field.key, next)}
+      />
     {:else if field.type === 'number'}
       <input
         id={`fm-${field.key}`}
@@ -139,7 +139,6 @@
         oninput={(event) => update(field.key, event.currentTarget.value)}
       />
     {/if}
-    {#if field.description}<span class="description">{field.description}</span>{/if}
   </label>
 {/snippet}
 
@@ -150,6 +149,8 @@
     gap: 10px;
     padding: 14px;
     overflow: auto;
+    /* Match the 12px control size used by this panel's inputs. */
+    --select-font-size: 12px;
   }
 
   .field-group {
@@ -185,7 +186,6 @@
   }
 
   input,
-  select,
   textarea {
     width: 100%;
     padding: 6px 8px;
@@ -204,10 +204,5 @@
 
   textarea {
     resize: vertical;
-  }
-
-  .description {
-    color: var(--muted);
-    font-size: 11px;
   }
 </style>

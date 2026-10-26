@@ -8,10 +8,12 @@
     ProjectLayout,
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
+  import type { Extension } from '@codemirror/state'
+  import { applyAppearance } from '@shirone-studio/plugin-appearance'
   import { convertFileSrc } from '@tauri-apps/api/core'
   import { createApp, detectLayout, type StudioApp } from './boot'
   import { resolveAssetPath } from './assets'
-  import { loadProjectRoot, saveProjectRoot } from './settings'
+  import { loadProjectRoot, saveProjectRoot, loadInfoPanel, saveInfoPanel, loadRichEditing, saveRichEditing } from './settings'
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
@@ -23,6 +25,7 @@
   let plugins = $state<StudioApp['plugins'] | null>(null)
   let layout = $state<ProjectLayout | null>(null)
   let types = $state<ContentTypeDefinition[]>([])
+  let editorExtensions = $state<Extension[]>([])
   let summaries = $state<Record<string, ContentSummary[]>>({})
   let templates = $state<ContentTemplate[]>([])
   let platforms = $state<PlatformAdapter[]>([])
@@ -34,8 +37,9 @@
   let loading = $state(true)
   let error = $state('')
   let saveState = $state('')
-  let showInfo = $state(true)
+  let showInfo = $state(loadInfoPanel())
   let rightTab = $state<'info' | 'preview'>('info')
+  let richEditing = $state(loadRichEditing())
   let originalBody = $state('')
   let frontmatterDirty = $state(false)
   let updatedAuto = $state(true)
@@ -44,9 +48,13 @@
   const currentType = $derived(
     current ? types.find((candidate) => candidate.id === current?.type) : undefined,
   )
-  const lintDiagnostics = $derived(
-    context && current ? context.lint.check(body, current.type) : [],
+  const lintCategory = $derived(
+    typeof current?.frontmatter?.category === 'string' ? current.frontmatter.category : '',
   )
+  const lintDiagnostics = $derived(
+    context && current ? context.lint.check(body, current.type, { category: lintCategory }) : [],
+  )
+  const fixableLint = $derived(lintDiagnostics.filter((item) => item.fix !== undefined))
 
   const previewHtml = $derived.by(() => {
     if (!context || !current || !currentType?.supports.preview) return ''
@@ -69,6 +77,10 @@
       const app = await createApp()
       context = app.context
       plugins = app.plugins
+      // The plugins that composed this context own the look; apply whatever
+      // they registered before the first window gets painted with content.
+      applyAppearance(app.context.appearance.list())
+      editorExtensions = app.context.appearance.editorExtensions() as Extension[]
       layout = await detectLayout(app.context, projectRoot)
       types = app.context.contentTypes.list()
       templates = app.context.templates.list()
@@ -84,14 +96,23 @@
   async function refresh() {
     if (!context) return
     const next: Record<string, ContentSummary[]> = {}
+    const failures: string[] = []
     for (const type of types) {
       try {
         next[type.id] = await type.list(context)
-      } catch {
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause)
+        failures.push(`${type.label}：${message}`)
+        console.error(`[shirone] 无法列出 ${type.id}`, cause)
         next[type.id] = []
       }
     }
     summaries = next
+    // Every type failing means the project layout is unusable. Say so instead
+    // of showing four empty groups and leaving the user guessing.
+    if (types.length > 0 && failures.length === types.length) {
+      error = `无法读取项目内容：${failures[0]}`
+    }
   }
 
   async function open(type: ContentTypeDefinition, item: ContentSummary) {
@@ -128,6 +149,33 @@
     current = { ...current, frontmatter: next }
     frontmatterDirty = true
     dirty = true
+  }
+
+  /**
+   * Apply every quick fix the linter offers, last position first so earlier
+   * offsets stay valid, and skip fixes that overlap one already applied.
+   */
+  function fixAllLint() {
+    const fixes = fixableLint
+      .map((item) => item.fix!)
+      .sort((a, b) => b.from - a.from || b.to - a.to)
+    if (fixes.length === 0) return
+
+    const applied: Array<{ from: number; to: number }> = []
+    let next = body
+    for (const fix of fixes) {
+      const overlaps = applied.some(
+        (range) => fix.from < range.to && fix.to > range.from,
+      )
+      if (overlaps) continue
+      next = `${next.slice(0, fix.from)}${fix.insert}${next.slice(fix.to)}`
+      applied.push({ from: fix.from, to: fix.to })
+    }
+
+    if (next !== body) {
+      body = next
+      dirty = next !== originalBody
+    }
   }
 
   async function save() {
@@ -193,6 +241,16 @@
     }
   }
 
+  function toggleRichEditing() {
+    richEditing = !richEditing
+    saveRichEditing(richEditing)
+  }
+
+  function toggleInfoPanel() {
+    showInfo = !showInfo
+    saveInfoPanel(showInfo)
+  }
+
   function reloadRoot() {
     saveProjectRoot(projectRoot.trim())
     current = null
@@ -217,9 +275,6 @@
       <button class="secondary" onclick={reloadRoot}>重新加载</button>
     </div>
     <div class="actions">
-      {#if layout}
-        <span class="badge">{layout.mode === 'npm' ? 'npm 内容模式' : '源码模式'}</span>
-      {/if}
       <button class="secondary" disabled={!context} onclick={() => (showNew = true)}>新建</button>
       <button class="secondary" disabled={!plugins} onclick={() => (showPlugins = true)}>插件</button>
       <button class="primary" disabled={!current || !dirty} onclick={save}>保存</button>
@@ -232,26 +287,29 @@
         <div class="loading">加载中…</div>
       {:else}
         {#each groups as group}
-          <section class="group">
-            <h2>{group}</h2>
-            {#each types.filter((type) => type.group === group) as type}
-              <div class="type">
-                <div class="type-label">{type.label}</div>
-                {#each summaries[type.id] ?? [] as item}
-                  <button
-                    class:active={current?.type === type.id && current?.id === item.id}
-                    class="item"
-                    onclick={() => void open(type, item)}
-                  >
-                    <span class="item-title">{item.title}</span>
-                    {#if item.date}<span class="item-date">{item.date.slice(0, 10)}</span>{/if}
-                  </button>
-                {:else}
-                  <div class="empty-type">暂无内容</div>
-                {/each}
-              </div>
-            {/each}
-          </section>
+          {@const groupTypes = types.filter(
+            (type) => type.group === group && (summaries[type.id]?.length ?? 0) > 0,
+          )}
+          {#if groupTypes.length > 0}
+            <section class="group">
+              <h2>{group}</h2>
+              {#each groupTypes as type}
+                <div class="type">
+                  <div class="type-label">{type.label}</div>
+                  {#each summaries[type.id] ?? [] as item}
+                    <button
+                      class:active={current?.type === type.id && current?.id === item.id}
+                      class="item"
+                      onclick={() => void open(type, item)}
+                    >
+                      <span class="item-title">{item.title}</span>
+                      {#if item.date}<span class="item-date">{item.date.slice(0, 10)}</span>{/if}
+                    </button>
+                  {/each}
+                </div>
+              {/each}
+            </section>
+          {/if}
         {/each}
       {/if}
     </aside>
@@ -268,25 +326,36 @@
           </div>
           <div class="docstatus">
             {dirty ? '未保存' : saveState || '已同步'}
-            <button class="secondary compact" onclick={() => (showInfo = !showInfo)}>
-              {showInfo ? '隐藏面板' : '内容面板'}
+            <button
+              class="secondary compact"
+              class:active={richEditing}
+              onclick={toggleRichEditing}
+            >
+              {richEditing ? '切到源码' : '切到富文本'}
+            </button>
+            <button
+              class="secondary compact"
+              class:active={showInfo}
+              onclick={toggleInfoPanel}
+            >
+              {showInfo ? '收起属性' : '属性'}
             </button>
           </div>
         </div>
-        <div class="docbody">
+        <div class="docbody" class:with-info={showInfo && !!currentType}>
           <div class="editor-column">
-            <div class="editor-note">
-              frontmatter 已隐藏，正文编辑器只显示 Markdown 内容。
-            </div>
             <div class="editor">
               <CodeEditor
                 value={body}
                 docId={current.path}
                 onChange={(next) => {
                   body = next
-                  dirty = true
+                  dirty = next !== originalBody
                 }}
-                lintSource={(text) => context?.lint.check(text, current?.type ?? 'posts') ?? []}
+                lintSource={(text) => context?.lint.check(text, current?.type ?? 'posts', { category: lintCategory }) ?? []}
+                extensions={editorExtensions}
+                rich={richEditing}
+                resolveAsset={resolvePreviewAsset}
               />
             </div>
           </div>
@@ -324,23 +393,19 @@
             </aside>
           {/if}
         </div>
-      {:else}
-        <div class="welcome">
-          <h1>Shirone Studio</h1>
-          <p>选择左侧内容开始编辑；frontmatter 与正文分离。</p>
-          {#if layout}
-            <p class="hint">工作区：{layout.root}</p>
-          {/if}
-        </div>
       {/if}
     </main>
   </div>
 
   <footer class="statusbar">
-    <span>{current ? current.type : '未打开内容'}</span>
-    <span>{dirty ? '● 未保存' : '○ 已保存'}</span>
-    <span>{lintDiagnostics.length} 条排版提示</span>
-    <span>{layout?.contentRoot ?? ''}</span>
+    {#if lintDiagnostics.length > 0}
+      <span>{lintDiagnostics.length} 条排版提示</span>
+      {#if fixableLint.length > 0}
+        <button class="compact" title="应用所有可自动修复的排版问题" onclick={fixAllLint}>
+          一键修复
+        </button>
+      {/if}
+    {/if}
   </footer>
 
   {#if showPlugins && plugins}
@@ -409,14 +474,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .badge {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    color: var(--accent);
-    font-size: 11px;
   }
 
   button {
@@ -502,12 +559,6 @@
     color: var(--muted);
   }
 
-  .empty-type {
-    padding: 4px 9px 8px;
-    font-size: 11px;
-    color: var(--muted);
-  }
-
   .main {
     display: flex;
     flex-direction: column;
@@ -548,11 +599,22 @@
     font-size: 11px;
   }
 
+  /* Flat toggles in the document bar show whether their panel is open. */
+  .docstatus button.active {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--text);
+  }
+
   .docbody {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr);
     flex: 1;
     min-height: 0;
+  }
+
+  .docbody.with-info {
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
 
   .editor-column {
@@ -610,14 +672,6 @@
     font-weight: 400;
   }
 
-  .editor-note {
-    padding: 6px 20px;
-    border-bottom: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 11px;
-    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
-  }
-
   .editor {
     flex: 1;
     min-height: 0;
@@ -626,28 +680,12 @@
   .error {
     margin: 12px 20px 0;
     padding: 10px 12px;
-    border: 1px solid #b42318;
+    border: 1px solid color-mix(in oklab, var(--danger) 45%, var(--border));
     border-radius: 8px;
-    background: #fef3f2;
-    color: #b42318;
+    background: var(--danger-bg);
+    color: var(--danger);
     font-size: 12px;
     white-space: pre-wrap;
-  }
-
-  .welcome {
-    margin: auto;
-    text-align: center;
-    color: var(--muted);
-  }
-
-  .welcome h1 {
-    color: var(--text);
-    font-size: 30px;
-  }
-
-  .hint {
-    font-size: 12px;
-    overflow-wrap: anywhere;
   }
 
   .loading {
@@ -667,7 +705,8 @@
   }
 
   @media (max-width: 1100px) {
-    .docbody {
+    .docbody,
+    .docbody.with-info {
       grid-template-columns: minmax(0, 1fr);
     }
 

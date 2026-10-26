@@ -44,9 +44,6 @@
       <h2>插件管理</h2>
       <button class="close" onclick={onclose} aria-label="关闭">×</button>
     </header>
-    <p class="hint">
-      插件由根目录 <code>compose.yml</code> 组合；核心内容插件不可在此关闭。
-    </p>
     {#if error}<p class="error">{error}</p>{/if}
     <div class="list">
       {#each records as record}
@@ -77,7 +74,7 @@
     display: grid;
     place-items: center;
     padding: 24px;
-    background: rgb(0 0 0 / 0.35);
+    background: var(--overlay);
     z-index: 20;
   }
 
@@ -109,17 +106,6 @@
     color: var(--muted);
     font-size: 20px;
     cursor: pointer;
-  }
-
-  .hint {
-    color: var(--muted);
-    font-size: 12px;
-  }
-
-  code {
-    padding: 1px 4px;
-    border-radius: 4px;
-    background: var(--surface);
   }
 
   .list {
@@ -162,7 +148,7 @@
   }
 
   .error {
-    color: #b42318;
+    color: var(--danger);
     font-size: 12px;
   }
 </style>

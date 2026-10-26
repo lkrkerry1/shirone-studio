@@ -1,6 +1,5 @@
 <script lang="ts">
   import 'katex/dist/katex.min.css'
-  import 'highlight.js/styles/github.css'
   import { onMount } from 'svelte'
   import mermaid from 'mermaid'
 
@@ -10,6 +9,9 @@
   } = $props()
   let container: HTMLDivElement
   let lastRendered = ''
+  // Re-rendering replaces the whole `{@html}` subtree, which would otherwise
+  // throw the pane back to the top on every keystroke.
+  let keepScroll = 0
 
   onMount(() => {
     mermaid.initialize({
@@ -17,6 +19,10 @@
       securityLevel: 'strict',
       theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
     })
+  })
+
+  $effect.pre(() => {
+    if (container && html !== lastRendered) keepScroll = container.scrollTop
   })
 
   $effect(() => {
@@ -41,11 +47,13 @@
         diagram.textContent = code.textContent ?? ''
         pre.replaceWith(diagram)
       }
+      container.scrollTop = keepScroll
       try {
         await mermaid.run({ nodes: container.querySelectorAll('.mermaid') })
       } catch {
         // Invalid Mermaid should not break the rest of the preview.
       }
+      container.scrollTop = keepScroll
     })
   })
 </script>
@@ -97,7 +105,7 @@
     padding: 0.15em 0.35em;
     border-radius: 5px;
     background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-    font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+    font-family: var(--editor-font);
     font-size: 0.9em;
   }
 
@@ -128,6 +136,69 @@
     margin: 1em 0;
   }
 
+  /* highlight.js tokens use the appearance plugin's github-light/dark palette
+     instead of a bundled stylesheet, so preview code matches the editor. */
+  :global(.preview .hljs) {
+    color: var(--text);
+    background: transparent;
+  }
+
+  :global(.preview .hljs-comment),
+  :global(.preview .hljs-quote) {
+    color: var(--syntax-comment);
+    font-style: italic;
+  }
+
+  :global(.preview .hljs-keyword),
+  :global(.preview .hljs-literal),
+  :global(.preview .hljs-built_in),
+  :global(.preview .hljs-type) {
+    color: var(--syntax-keyword);
+  }
+
+  :global(.preview .hljs-string),
+  :global(.preview .hljs-regexp),
+  :global(.preview .hljs-addition) {
+    color: var(--syntax-string);
+  }
+
+  :global(.preview .hljs-number),
+  :global(.preview .hljs-symbol),
+  :global(.preview .hljs-bullet) {
+    color: var(--syntax-number);
+  }
+
+  :global(.preview .hljs-title),
+  :global(.preview .hljs-title.function_),
+  :global(.preview .hljs-section) {
+    color: var(--syntax-function);
+  }
+
+  :global(.preview .hljs-attr),
+  :global(.preview .hljs-attribute),
+  :global(.preview .hljs-variable),
+  :global(.preview .hljs-template-variable),
+  :global(.preview .hljs-params),
+  :global(.preview .hljs-meta) {
+    color: var(--syntax-variable);
+  }
+
+  :global(.preview .hljs-tag),
+  :global(.preview .hljs-name),
+  :global(.preview .hljs-selector-tag) {
+    color: var(--syntax-tag);
+  }
+
+  :global(.preview .hljs-operator),
+  :global(.preview .hljs-punctuation),
+  :global(.preview .hljs-subst) {
+    color: var(--syntax-punctuation);
+  }
+
+  :global(.preview .hljs-deletion) {
+    color: var(--syntax-keyword);
+  }
+
   :global(.preview th),
   :global(.preview td) {
     border: 1px solid var(--border);
@@ -143,17 +214,17 @@
     background: color-mix(in srgb, var(--accent) 5%, var(--surface));
   }
 
-  :global(.preview .directive::before) {
-    content: attr(class);
-    display: block;
-    margin-bottom: 4px;
-    color: var(--muted);
-    font-size: 11px;
-  }
-
   :global(.preview .mermaid) {
     overflow: auto;
     padding: 8px;
+  }
+
+  /* Display formulas can be wider than the pane; scroll them instead of
+     letting the whole preview grow a horizontal scrollbar. */
+  :global(.preview .katex-display) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 0;
   }
 
   :global(.preview .media-embed) {
