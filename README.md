@@ -86,9 +86,11 @@ workspace packages; the app does not install remote plugin code in v1. See
 ## Known environment issue
 
 On the Windows Insider build used during development (10.0.26300), WebView2 crashes in
-`msedge.dll` with `0x80000003` when any WebView2 host creates a controller. Both the installed
-runtime 155.0.4283.62 and a clean fixed-version runtime 151.0.4129.107 reproduce it, so it is
-an OS/runtime compatibility problem rather than a project dependency. The Tauri window starts,
+`msedge.dll` with `0x80000003` when any WebView2 host creates a controller. The installed runtime
+155.0.4283.62 and clean fixed-version runtimes 151.0.4129.107 and 156.0.4314.42 all reproduce
+it, so it is an OS/runtime compatibility problem rather than a project dependency. Edge 156
+headless rendering works on the same machine, which narrows the failure to WebView2 host
+creation. The Tauri window starts,
 but the webview is blank. On a normal Windows 11 machine with a working WebView2 runtime the
 same build is expected to run; if not, reinstall the Evergreen **Microsoft Edge WebView2
 Runtime**. All frontend, Rust filesystem, and plugin tests pass independently of that runtime.
