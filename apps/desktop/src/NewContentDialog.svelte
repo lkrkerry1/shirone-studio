@@ -1,0 +1,286 @@
+<script lang="ts">
+  import type {
+    ContentTypeDefinition,
+    FieldDefinition,
+  } from '@shirone-studio/contracts'
+  import type { ContentTemplate } from '@shirone-studio/runtime'
+  import type { StudioApp } from './boot'
+
+  let { context, types, templates, onclose, oncreated }: {
+    context: StudioApp['context']
+    types: ContentTypeDefinition[]
+    templates: ContentTemplate[]
+    onclose: () => void
+    oncreated: (type: ContentTypeDefinition, id: string) => void
+  } = $props()
+
+  interface Entry {
+    id: string
+    label: string
+    description?: string
+    kind: 'template' | 'provider'
+    typeId: string
+    fields: FieldDefinition[]
+  }
+
+  const entries: Entry[] = $derived([
+    ...templates.map((template) => ({
+      id: `template:${template.id}`,
+      label: template.label,
+      description: template.description,
+      kind: 'template' as const,
+      typeId: template.contentType,
+      fields: template.fields,
+    })),
+    ...types.flatMap((type) =>
+      (type.newContent ?? []).map((provider) => ({
+        id: `provider:${type.id}:${provider.id}`,
+        label: provider.label,
+        description: provider.description,
+        kind: 'provider' as const,
+        typeId: type.id,
+        fields: provider.fields ?? [],
+      })),
+    ),
+  ])
+
+  let entryId = $state('')
+  let values = $state<Record<string, unknown>>({})
+  let error = $state('')
+  let busy = $state(false)
+
+  const selected = $derived(entries.find((entry) => entry.id === entryId))
+
+  $effect(() => {
+    if (!entryId && entries.length > 0) entryId = entries[0]!.id
+  })
+
+  function choose(id: string) {
+    entryId = id
+    values = {}
+    error = ''
+  }
+
+  function update(key: string, value: unknown) {
+    values = { ...values, [key]: value }
+  }
+
+  async function create() {
+    const entry = selected
+    if (!entry) return
+    const type = types.find((candidate) => candidate.id === entry.typeId)
+    if (!type) {
+      error = '找不到内容类型'
+      return
+    }
+    if (entry.kind === 'template') {
+      const template = templates.find((candidate) => `template:${candidate.id}` === entry.id)
+      if (!template) return
+      const draft = template.build(context, values)
+      try {
+        busy = true
+        const doc = await type.create(context, draft)
+        oncreated(type, doc.id)
+      } catch (cause) {
+        error = cause instanceof Error ? cause.message : String(cause)
+      } finally {
+        busy = false
+      }
+      return
+    }
+    const provider = (type.newContent ?? []).find(
+      (candidate) => `provider:${type.id}:${candidate.id}` === entry.id,
+    )
+    if (!provider) return
+    try {
+      busy = true
+      const draft = await provider.create(context, values)
+      const doc = await type.create(context, draft)
+      oncreated(type, doc.id)
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      busy = false
+    }
+  }
+</script>
+
+<div class="overlay" role="presentation" onclick={(event) => event.target === event.currentTarget && onclose()}>
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="新建内容">
+    <header>
+      <h2>新建内容</h2>
+      <button class="close" onclick={onclose} aria-label="关闭">×</button>
+    </header>
+
+    <label class="field">
+      <span>模板 / 内容类型</span>
+      <select value={entryId} onchange={(event) => choose(event.currentTarget.value)}>
+        {#each entries as entry}
+          <option value={entry.id}>{entry.label}</option>
+        {/each}
+      </select>
+    </label>
+
+    {#if selected?.description}
+      <p class="hint">{selected.description}</p>
+    {/if}
+
+    {#each selected?.fields ?? [] as field}
+      <label class="field">
+        <span>
+          {field.label}
+          {#if field.required}<span class="required">*</span>{/if}
+        </span>
+        {#if field.type === 'text'}
+          <textarea
+            rows="3"
+            placeholder={field.placeholder}
+            value={String(values[field.key] ?? '')}
+            oninput={(event) => update(field.key, event.currentTarget.value)}
+          ></textarea>
+        {:else if field.type === 'select'}
+          <select
+            value={String(values[field.key] ?? '')}
+            onchange={(event) => update(field.key, event.currentTarget.value)}
+          >
+            <option value="">—</option>
+            {#each field.options ?? [] as option}
+              <option value={option}>{option}</option>
+            {/each}
+          </select>
+        {:else if field.type === 'number'}
+          <input
+            type="number"
+            value={String(values[field.key] ?? '')}
+            oninput={(event) =>
+              update(field.key, event.currentTarget.value === '' ? undefined : Number(event.currentTarget.value))}
+          />
+        {:else}
+          <input
+            type="text"
+            placeholder={field.placeholder}
+            value={String(values[field.key] ?? '')}
+            oninput={(event) => update(field.key, event.currentTarget.value)}
+          />
+        {/if}
+      </label>
+    {/each}
+
+    {#if error}<p class="error">{error}</p>{/if}
+
+    <footer>
+      <button class="secondary" onclick={onclose}>取消</button>
+      <button class="primary" disabled={busy} onclick={create}>{busy ? '创建中…' : '创建'}</button>
+    </footer>
+  </div>
+</div>
+
+<style>
+  .overlay {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgb(0 0 0 / 0.35);
+    z-index: 20;
+  }
+
+  .dialog {
+    width: min(520px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-2);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.25);
+  }
+
+  header,
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  header {
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .close {
+    border: 0;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--muted);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+
+  input,
+  select,
+  textarea {
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+  }
+
+  .hint {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .required {
+    color: var(--accent);
+  }
+
+  .error {
+    color: #b42318;
+    font-size: 12px;
+    white-space: pre-wrap;
+  }
+
+  footer {
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+
+  button {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+  }
+</style>

@@ -22,6 +22,7 @@
     "@shirone-studio/plugin-content-series": "workspace:*",
     "@shirone-studio/plugin-frontmatter": "workspace:*",
     "@shirone-studio/plugin-host": "workspace:*",
+    "@shirone-studio/plugin-template-posts-algorithm": "workspace:*",
     "@shirone-studio/runtime": "workspace:*",
     "@tauri-apps/api": "^2.0.0",
     "codemirror": "^6.0.0",

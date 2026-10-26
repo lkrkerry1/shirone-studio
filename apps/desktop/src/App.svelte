@@ -6,16 +6,20 @@
     ContentTypeDefinition,
     ProjectLayout,
   } from '@shirone-studio/contracts'
+  import type { ContentTemplate } from '@shirone-studio/runtime'
   import { createApp, detectLayout, type StudioApp } from './boot'
   import { loadProjectRoot, saveProjectRoot } from './settings'
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
+  import NewContentDialog from './NewContentDialog.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
   let layout = $state<ProjectLayout | null>(null)
   let types = $state<ContentTypeDefinition[]>([])
   let summaries = $state<Record<string, ContentSummary[]>>({})
+  let templates = $state<ContentTemplate[]>([])
+  let showNew = $state(false)
   let current = $state<ContentDocument | null>(null)
   let body = $state('')
   let dirty = $state(false)
@@ -44,6 +48,7 @@
       context = app.context
       layout = await detectLayout(app.context, projectRoot)
       types = app.context.contentTypes.list()
+      templates = app.context.templates.list()
       await refresh()
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
@@ -175,6 +180,7 @@
       {#if layout}
         <span class="badge">{layout.mode === 'npm' ? 'npm 内容模式' : '源码模式'}</span>
       {/if}
+      <button class="secondary" disabled={!context} onclick={() => (showNew = true)}>新建</button>
       <button class="primary" disabled={!current || !dirty} onclick={save}>保存</button>
     </div>
   </header>
@@ -278,6 +284,21 @@
     <span>{dirty ? '● 未保存' : '○ 已保存'}</span>
     <span>{layout?.contentRoot ?? ''}</span>
   </footer>
+
+  {#if showNew && context}
+    <NewContentDialog
+      {context}
+      {types}
+      {templates}
+      onclose={() => (showNew = false)}
+      oncreated={async (type, id) => {
+        showNew = false
+        await refresh()
+        const summary = (summaries[type.id] ?? []).find((item) => item.id === id)
+        if (summary) await open(type, summary)
+      }}
+    />
+  {/if}
 </div>
 
 <style>

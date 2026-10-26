@@ -214,6 +214,9 @@ importers:
       '@shirone-studio/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugins/host
+      '@shirone-studio/plugin-template-posts-algorithm':
+        specifier: workspace:*
+        version: link:../../packages/plugins/template-posts-algorithm
       '@shirone-studio/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -330,6 +333,18 @@ importers:
         version: 2.12.4
 
   packages/plugins/syntax-shirone:
+    dependencies:
+      '@shirone-studio/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      '@shirone-studio/runtime':
+        specifier: workspace:*
+        version: link:../../runtime
+
+  packages/plugins/template-posts-algorithm:
     dependencies:
       '@shirone-studio/contracts':
         specifier: workspace:*
