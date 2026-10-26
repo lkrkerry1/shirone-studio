@@ -1,0 +1,11 @@
+{
+  "name": "@shirone-studio/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/main.ts",
+    "./content": "./src/content.ts"
+  },
+  "types": "./src/main.ts"
+}
