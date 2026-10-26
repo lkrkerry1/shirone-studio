@@ -27,6 +27,7 @@
     "@shirone-studio/plugin-host": "workspace:*",
     "@shirone-studio/plugin-lint": "workspace:*",
     "@shirone-studio/plugin-preview": "workspace:*",
+    "@shirone-studio/plugin-git": "workspace:*",
     "@shirone-studio/plugin-template-posts-algorithm": "workspace:*",
     "@shirone-studio/plugin-platforms": "workspace:*",
     "@shirone-studio/runtime": "workspace:*",

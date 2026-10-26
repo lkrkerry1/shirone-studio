@@ -14,15 +14,18 @@
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
   import PreviewPane from './PreviewPane.svelte'
+  import PluginManagerDialog from './PluginManagerDialog.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
+  let plugins = $state<StudioApp['plugins'] | null>(null)
   let layout = $state<ProjectLayout | null>(null)
   let types = $state<ContentTypeDefinition[]>([])
   let summaries = $state<Record<string, ContentSummary[]>>({})
   let templates = $state<ContentTemplate[]>([])
   let platforms = $state<PlatformAdapter[]>([])
   let showNew = $state(false)
+  let showPlugins = $state(false)
   let current = $state<ContentDocument | null>(null)
   let body = $state('')
   let dirty = $state(false)
@@ -63,6 +66,7 @@
     try {
       const app = await createApp()
       context = app.context
+      plugins = app.plugins
       layout = await detectLayout(app.context, projectRoot)
       types = app.context.contentTypes.list()
       templates = app.context.templates.list()
@@ -199,6 +203,7 @@
         <span class="badge">{layout.mode === 'npm' ? 'npm 内容模式' : '源码模式'}</span>
       {/if}
       <button class="secondary" disabled={!context} onclick={() => (showNew = true)}>新建</button>
+      <button class="secondary" disabled={!plugins} onclick={() => (showPlugins = true)}>插件</button>
       <button class="primary" disabled={!current || !dirty} onclick={save}>保存</button>
     </div>
   </header>
@@ -319,6 +324,10 @@
     <span>{lintDiagnostics.length} 条排版提示</span>
     <span>{layout?.contentRoot ?? ''}</span>
   </footer>
+
+  {#if showPlugins && plugins}
+    <PluginManagerDialog plugins={plugins} onclose={() => (showPlugins = false)} />
+  {/if}
 
   {#if showNew && context}
     <NewContentDialog

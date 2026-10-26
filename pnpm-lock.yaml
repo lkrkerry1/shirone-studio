@@ -220,6 +220,9 @@ importers:
       '@shirone-studio/plugin-frontmatter':
         specifier: workspace:*
         version: link:../../packages/plugins/frontmatter
+      '@shirone-studio/plugin-git':
+        specifier: workspace:*
+        version: link:../../packages/plugins/git
       '@shirone-studio/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugins/host
@@ -379,6 +382,15 @@ importers:
       yaml:
         specifier: ^2.8.0
         version: 2.9.1
+
+  packages/plugins/git:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: 4.0.5
+        version: 4.0.5
+      '@shirone-studio/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
 
   packages/plugins/host:
     dependencies:

@@ -21,6 +21,7 @@ import templates from '@shirone-studio/plugin-template-posts-algorithm'
 import platforms from '@shirone-studio/plugin-platforms'
 import lint from '@shirone-studio/plugin-lint'
 import preview from '@shirone-studio/plugin-preview'
+import git from '@shirone-studio/plugin-git'
 import composeSource from '../../../compose.yml?raw'
 
 const registry: Record<string, PluginDefinition<unknown>> = {
@@ -34,6 +35,7 @@ const registry: Record<string, PluginDefinition<unknown>> = {
   '@shirone-studio/plugin-platforms': platforms as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-lint': lint as unknown as PluginDefinition<unknown>,
   '@shirone-studio/plugin-preview': preview as unknown as PluginDefinition<unknown>,
+  '@shirone-studio/plugin-git': git as unknown as PluginDefinition<unknown>,
 }
 
 export interface StudioApp {
