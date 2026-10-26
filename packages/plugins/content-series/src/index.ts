@@ -129,7 +129,7 @@ export const seriesType: ContentTypeDefinition = {
         ? doc.rawFrontmatter
         : context.frontmatter.serialize(doc.frontmatter, { order: SERIES_ORDER })
     const content = `${raw}\n${doc.body ?? ''}`
-    const result = await context.host.writeText(context.layout.root, doc.path, content, doc.hash)
+    const result = await context.host.writeText(context.layout.root, doc.path, content, doc.force ? undefined : doc.hash)
     return { path: doc.path, hash: result.hash }
   },
   newContent: [

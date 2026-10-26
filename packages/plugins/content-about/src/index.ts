@@ -68,7 +68,7 @@ export const aboutType: ContentTypeDefinition = {
   },
   async save(ctx: unknown, doc: ContentDocument): Promise<{ path: string; hash?: string }> {
     const context = asContext(ctx)
-    const result = await context.host.writeText(context.layout.root, doc.path, doc.body ?? '', doc.hash)
+    const result = await context.host.writeText(context.layout.root, doc.path, doc.body ?? '', doc.force ? undefined : doc.hash)
     return { path: doc.path, hash: result.hash }
   },
 }

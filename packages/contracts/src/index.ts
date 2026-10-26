@@ -46,6 +46,11 @@ export interface ContentDocument {
   frontmatterDirty?: boolean
   data?: unknown
   hash?: string
+  /**
+   * Save even though `hash` no longer matches the file on disk. Used after the
+   * editor told the user the file changed externally.
+   */
+  force?: boolean
   meta: ContentSummary
 }
 

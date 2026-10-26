@@ -11,14 +11,26 @@
   import type { Extension } from '@codemirror/state'
   import { applyAppearance } from '@shirone-studio/plugin-appearance'
   import { convertFileSrc } from '@tauri-apps/api/core'
+  import { getCurrentWindow } from '@tauri-apps/api/window'
   import { createApp, detectLayout, type StudioApp } from './boot'
   import { resolveAssetPath } from './assets'
-  import { loadProjectRoot, saveProjectRoot, loadInfoPanel, saveInfoPanel, loadRichEditing, saveRichEditing } from './settings'
+  import {
+    loadAutosave,
+    loadInfoPanel,
+    loadProjectRoot,
+    loadRichEditing,
+    saveAutosave,
+    saveInfoPanel,
+    saveProjectRoot,
+    saveRichEditing,
+  } from './settings'
+  import { documentDirectory, pastedImagePath, readFileBase64 } from './paste-image'
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
   import PreviewPane from './PreviewPane.svelte'
   import PluginManagerDialog from './PluginManagerDialog.svelte'
+  import GitDialog from './GitDialog.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
@@ -31,6 +43,7 @@
   let platforms = $state<PlatformAdapter[]>([])
   let showNew = $state(false)
   let showPlugins = $state(false)
+  let showGit = $state(false)
   let current = $state<ContentDocument | null>(null)
   let body = $state('')
   let dirty = $state(false)
@@ -43,6 +56,11 @@
   let originalBody = $state('')
   let frontmatterDirty = $state(false)
   let updatedAuto = $state(true)
+  let autosave = $state(loadAutosave())
+  let saving = $state(false)
+  let conflict = $state(false)
+  let savedMtime = $state(0)
+  let closing = $state(false)
 
   const groups = $derived([...new Set(types.map((type) => type.group))])
   const currentType = $derived(
@@ -68,6 +86,27 @@
 
   onMount(() => {
     void boot()
+    // Coming back to the window is the moment to notice edits made elsewhere.
+    window.addEventListener('focus', () => void checkExternalChange())
+    let unlisten: (() => void) | undefined
+    void getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        if (closing || !dirty || !context || !current) return
+        event.preventDefault()
+        closing = true
+        try {
+          await save({ silent: true })
+          if (!dirty) await getCurrentWindow().close()
+        } catch (cause) {
+          error = cause instanceof Error ? cause.message : String(cause)
+        } finally {
+          closing = false
+        }
+      })
+      .then((stop) => {
+        unlisten = stop
+      })
+    return () => unlisten?.()
   })
 
   async function boot() {
@@ -127,6 +166,18 @@
       updatedAuto = true
       saveState = ''
       error = ''
+      conflict = false
+      savedMtime = 0
+      try {
+        // Remember the on-disk timestamp so a later focus can spot edits made
+        // outside the editor without hashing the whole file.
+        if (layout) {
+          const stat = await context.host.stat(layout.root, doc.path)
+          savedMtime = stat.mtimeMs
+        }
+      } catch {
+        savedMtime = 0
+      }
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause)
     }
@@ -178,10 +229,11 @@
     }
   }
 
-  async function save() {
-    if (!context || !current) return
+  async function save(options: { silent?: boolean; force?: boolean } = {}) {
+    if (!context || !current || saving) return
     const type = types.find((candidate) => candidate.id === current?.type)
     if (!type) return
+    saving = true
     try {
       let frontmatter = current.frontmatter ?? {}
       const bodyChanged = body !== originalBody
@@ -200,23 +252,97 @@
           }
         }
       }
+      const path = current.path
       const result = await type.save(context, {
         ...current,
         body,
         frontmatter,
         frontmatterDirty,
         rawFrontmatter: current.rawFrontmatter,
+        force: options.force ?? false,
       })
-      current = { ...current, body, frontmatter, frontmatterDirty: false, hash: result.hash }
+      current = {
+        ...current,
+        body,
+        frontmatter,
+        frontmatterDirty: false,
+        hash: result.hash,
+        force: false,
+      }
       originalBody = body
       dirty = false
       frontmatterDirty = false
-      saveState = '已保存'
-      await refresh()
+      conflict = false
+      saveState = options.silent ? '已自动保存' : '已保存'
+      if (!options.silent) await refresh()
+      try {
+        if (layout) {
+          const stat = await context.host.stat(layout.root, path)
+          savedMtime = stat.mtimeMs
+        }
+      } catch {
+        savedMtime = 0
+      }
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : String(cause)
+      const message = cause instanceof Error ? cause.message : String(cause)
+      if (message.includes('CONFLICT')) {
+        // Another program wrote this file: keep the buffer and ask the user.
+        conflict = true
+        saveState = ''
+      } else {
+        error = message
+      }
+    } finally {
+      saving = false
     }
   }
+
+  function toggleAutosave() {
+    autosave = !autosave
+    saveAutosave(autosave)
+  }
+
+  function reloadFromDisk() {
+    if (!currentType || !current) return
+    void open(currentType, current.meta)
+  }
+
+  async function checkExternalChange(): Promise<void> {
+    if (!context || !current || !currentType || !layout || dirty || saving || closing) return
+    try {
+      const stat = await context.host.stat(layout.root, current.path)
+      if (!stat.exists || !savedMtime || stat.mtimeMs === savedMtime) return
+      await open(currentType, current.meta)
+      saveState = '已重新载入外部改动'
+    } catch {
+      // Detection is best effort; a failed stat must not disturb the editor.
+    }
+  }
+
+  async function insertImageFile(file: File): Promise<string | null> {
+    if (!context || !current || !layout) return null
+    const docRelative = pastedImagePath(current.path, file)
+    const directory = documentDirectory(current.path)
+    const rootRelative = directory ? `${directory}/${docRelative}` : docRelative
+    const base64 = await readFileBase64(file)
+    await context.host.writeAsset(layout.root, rootRelative, base64)
+    saveState = '图片已插入'
+    return `![](${docRelative})`
+  }
+
+  function imageError(cause: unknown) {
+    error = cause instanceof Error ? cause.message : String(cause)
+  }
+
+  // Debounced autosave: reset the timer on every keystroke and stay out of the
+  // way while another save or a conflict is pending.
+  $effect(() => {
+    void body
+    void frontmatterDirty
+    if (!autosave || !dirty || saving || conflict || !current) return
+    const timer = setTimeout(() => void save({ silent: true }), 1200)
+    return () => clearTimeout(timer)
+  })
 
   function resolvePreviewAsset(src: string): string {
     if (!layout || !current) return src
@@ -276,8 +402,15 @@
     </div>
     <div class="actions">
       <button class="secondary" disabled={!context} onclick={() => (showNew = true)}>新建</button>
+      <button
+        class="secondary"
+        disabled={!layout || !context}
+        onclick={() => (showGit = true)}
+      >
+        Git
+      </button>
       <button class="secondary" disabled={!plugins} onclick={() => (showPlugins = true)}>插件</button>
-      <button class="primary" disabled={!current || !dirty} onclick={save}>保存</button>
+      <button class="primary" disabled={!current || !dirty} onclick={() => void save()}>保存</button>
     </div>
   </header>
 
@@ -318,6 +451,13 @@
       {#if error}
         <div class="error">{error}</div>
       {/if}
+      {#if conflict}
+        <div class="conflict">
+          <span>文件已在外部被修改，当前内容尚未保存。</span>
+          <button class="compact" onclick={reloadFromDisk}>重新加载</button>
+          <button class="compact primary" onclick={() => void save({ force: true })}>覆盖保存</button>
+        </div>
+      {/if}
       {#if current}
         <div class="docbar">
           <div class="docmeta">
@@ -356,6 +496,8 @@
                 extensions={editorExtensions}
                 rich={richEditing}
                 resolveAsset={resolvePreviewAsset}
+                onImageFile={insertImageFile}
+                onImageError={imageError}
               />
             </div>
           </div>
@@ -406,10 +548,20 @@
         </button>
       {/if}
     {/if}
+    <button
+      class="compact autosave"
+      class:active={autosave}
+      title="停止输入后自动保存"
+      onclick={toggleAutosave}>自动保存</button
+    >
   </footer>
 
   {#if showPlugins && plugins}
     <PluginManagerDialog plugins={plugins} onclose={() => (showPlugins = false)} />
+  {/if}
+
+  {#if showGit && context && layout}
+    <GitDialog {context} root={layout.root} onclose={() => (showGit = false)} />
   {/if}
 
   {#if showNew && context}
@@ -688,6 +840,29 @@
     white-space: pre-wrap;
   }
 
+  .conflict {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 20px 0;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border));
+    border-radius: 8px;
+    background: color-mix(in oklab, var(--accent) 10%, transparent);
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .conflict span {
+    flex: 1;
+  }
+
+  .conflict button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
   .loading {
     padding: 20px;
     color: var(--muted);
@@ -696,12 +871,22 @@
 
   .statusbar {
     display: flex;
+    align-items: center;
     gap: 18px;
     padding: 5px 12px;
     border-top: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--muted);
     font-size: 11px;
+  }
+
+  .statusbar .autosave {
+    margin-left: auto;
+  }
+
+  .statusbar button.active {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    color: var(--accent);
   }
 
   @media (max-width: 1100px) {

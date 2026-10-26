@@ -25,6 +25,7 @@ designed to grow toward moments, series, about pages, timelines and other struct
 | M12 Markdown / KaTeX / Mermaid preview | done |
 | M13 plugin manager and Git contract | done |
 | M14 docs and timeline contract | done |
+| M15 Git panel, image paste and autosave | done |
 
 ## Prerequisites
 

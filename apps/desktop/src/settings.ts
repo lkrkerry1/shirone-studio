@@ -1,6 +1,7 @@
 const PROJECT_ROOT_KEY = 'shirone-studio.projectRoot'
 const INFO_PANEL_KEY = 'shirone-studio.infoPanel'
 const RICH_EDITING_KEY = 'shirone-studio.richEditing'
+const AUTOSAVE_KEY = 'shirone-studio.autosave'
 const DEFAULT_PROJECT_ROOT = 'C:/Users/lkrkerry/Documents/DSH/Codes/Blog'
 
 export function loadProjectRoot(): string {
@@ -33,4 +34,13 @@ export function loadRichEditing(): boolean {
 
 export function saveRichEditing(enabled: boolean): void {
   localStorage.setItem(RICH_EDITING_KEY, String(enabled))
+}
+
+/** Autosave on by default: a blog draft is small and losing it costs more. */
+export function loadAutosave(): boolean {
+  return localStorage.getItem(AUTOSAVE_KEY) !== 'false'
+}
+
+export function saveAutosave(enabled: boolean): void {
+  localStorage.setItem(AUTOSAVE_KEY, String(enabled))
 }
