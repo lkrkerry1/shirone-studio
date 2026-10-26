@@ -64,7 +64,9 @@ TEMP=.tmp TMP=.tmp pnpm build
    templates, pick a platform and fetch the problem title/slug/tags before creating.
 5. Formatting issues appear as editor underlines and gutter markers; the status bar shows the
    current count. Quick fixes are available from the CodeMirror lint action.
-6. The right panel has a preview tab (Markdown, GFM, KaTeX, Mermaid, directives).
+6. The right panel has a preview tab (Markdown, GFM, KaTeX, Mermaid, directives). Local images
+   such as `./cover.png` resolve relative to the post bundle; `/images/...` resolves under
+   `public/`. Raw `<video>` / `<audio>` elements use the same Tauri asset protocol.
 7. “插件” shows the loaded plugins. Core content plugins are locked; optional plugins can be
    toggled without restarting the app.
 
@@ -83,9 +85,10 @@ workspace packages; the app does not install remote plugin code in v1. See
 
 ## Known environment issue
 
-On the Windows Insider build used during development, the installed WebView2 runtime
-(155.0.4283.62) crashes in `msedge.dll` with `0x80000003` when any WebView2 host creates a
-controller. The app process and Tauri window start, but the webview is blank. This is a runtime
-crash, not a frontend build error; reinstall/update the **Microsoft Edge WebView2 Runtime** from
-Microsoft’s Evergreen installer on the target machine. All frontend, Rust filesystem, and plugin
-tests pass independently of that runtime.
+On the Windows Insider build used during development (10.0.26300), WebView2 crashes in
+`msedge.dll` with `0x80000003` when any WebView2 host creates a controller. Both the installed
+runtime 155.0.4283.62 and a clean fixed-version runtime 151.0.4129.107 reproduce it, so it is
+an OS/runtime compatibility problem rather than a project dependency. The Tauri window starts,
+but the webview is blank. On a normal Windows 11 machine with a working WebView2 runtime the
+same build is expected to run; if not, reinstall the Evergreen **Microsoft Edge WebView2
+Runtime**. All frontend, Rust filesystem, and plugin tests pass independently of that runtime.

@@ -26,12 +26,23 @@ pub fn run() {
             };
             std::fs::create_dir_all(&data_dir)?;
 
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Shirone Studio")
-                .inner_size(1440.0, 900.0)
-                .min_inner_size(1024.0, 680.0)
-                .data_directory(data_dir)
-                .build()?;
+            let mut window = WebviewWindowBuilder::new(
+                app,
+                "main",
+                WebviewUrl::App("index.html".into()),
+            )
+            .title("Shirone Studio")
+            .inner_size(1440.0, 900.0)
+            .min_inner_size(1024.0, 680.0)
+            .data_directory(data_dir);
+
+            // Escape hatch for machines whose WebView2 runtime crashes in the
+            // GPU/audio sandbox. Normal launches keep Tauri's defaults.
+            if let Ok(args) = std::env::var("SHIRONE_WEBVIEW_ARGS") {
+                window = window.additional_browser_args(&args);
+            }
+
+            window.build()?;
 
             Ok(())
         })
