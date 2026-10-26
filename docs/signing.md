@@ -7,18 +7,61 @@ Windows 能验证发布者、签名后文件被改动会失效，SmartScreen 的
 Tauri 在 `tauri build` 时会自动签名应用 exe 和生成的安装包，只要 `tauri.conf.json` 里配好
 `bundle.windows`。没有证书时构建照常进行，产物就是未签名的（当前 v0.1.0 就是这样）。
 
+## 先选路线
+
+签名没有"最好"，只有"匹配你的分发方式"。先回答三个问题：
+
+1. **谁在下载？** 只有自己和朋友 → 可以不签；公开给陌生人 → 值得签；企业客户 → 必须签。
+2. **谁来做签名？** 自己的电脑（插 token）→ 本机证书；GitHub Actions 自动发布 → 必须能"云端签"。
+3. **证书上显示谁？** 开源免费项目 → 赞助方证书（显示 SignPath Foundation 等）；想要自己的名字 →
+   自购 OV/EV 或 Azure Trusted Signing。
+
+对照表：
+
+| 方案 | 费用 | CI 自动签名 | 签名显示 | 适合 |
+| --- | --- | --- | --- | --- |
+| 不签 | 0 | — | 无（"未知发布者"） | 自用、早期项目 |
+| 开源赞助计划（SignPath Foundation、Certum Open Source） | 0 | 可以（SignPath 有 GitHub Action） | 赞助方 / 项目名 | **公开的开源项目，首选** |
+| Azure Trusted Signing | 约 $10/月起 | 原生支持（值得分签名次数） | 你自己（需通过身份验证） | 有 Azure 订阅、能过核验的个人/组织 |
+| 自购 OV 证书 | 约 $200–400/年 | 需云 HSM / 云签名服务，USB token 不行 | 你自己 / 公司 | 持续分发、想掌控证书 |
+| EV 证书 | 更贵（约 $300–600/年） | 同上，且多用硬件 token | 你自己 / 公司 | 面向大量用户的商业软件 |
+| 自签证书 | 0 | 可以 | 自定义（对方不信任） | 只在本地测试 |
+
+几个容易踩的认知：
+
+- **OV/EV 证书从 2023 年 6 月起不能是裸 pfx**：私钥必须放在 FIPS 140-2 Level 2 的硬件里
+  （USB token 或云 HSM）。所以"买 pfx 丢进 CI"这条路对新证书已经不存在，要么云端签，要么
+  把 token 插在构建机上。
+- **EV 不等于立刻没有 SmartScreen 提示**：EV 只是更容易积累信誉，微软现在的口径是信誉看下载量
+  与时间，不看证书等级。
+- **签名 ≠ 不会被报毒**：杀毒误报和 SmartScreen 是两套机制，签名只解决"发布者是谁"。
+
 ## 1. 先拿到证书
 
 | 类型 | 形式 | 特点 |
 | --- | --- | --- |
-| OV（Organization Validation） | `.pfx` 文件 + 密码 | 最常用，价格较低，签发前要核验身份，通常几天 |
-| EV（Extended Validation） | 硬件 token / 云 HSM | 核验更严，SmartScreen 信誉积累最快，不能导出成 pfx |
+| OV（Organization Validation） | USB token 或云 HSM（新证书不再发 pfx） | 最常用，价格较低，签发前要核验身份，通常几天 |
+| EV（Extended Validation） | 硬件 token / 云 HSM | 核验更严，信誉积累更快，私钥不可导出 |
 | Azure Trusted Signing | 云服务，按签名次数计费 | 不用自管证书，CI 里最省事；需要 Azure 订阅与身份核验 |
+| 开源赞助计划 | 由赞助方代签 | 免费，但签名显示赞助方（如 SignPath Foundation）；需要申请并被接受 |
 
-签发机构（DigiCert、Sectigo、SSL.com、Certum 等）都会给出 pfx 或云签名入口。**EV 证书不能
-导出成 pfx**，所以只能用下面的"方案 B"。
+**开源项目优先看这两种**（本项目是 MIT 协议，符合条件）：
 
-## 2. 方案 A：pfx + 内置 signtool
+- **SignPath Foundation**：面向开源项目的免费 Authenticode 签名，提供 GitHub Actions 集成，
+  签名者显示为 "SignPath Foundation"。需要提交项目申请。
+- **Certum Open Source Code Signing**：面向开源项目的免费证书，通过 SimplySign 云签名，
+  有调用次数限制，需要项目核验。
+
+两者的共同点：免费、云端签、能进 CI；代价是签名者不是你本人，且需要人工审核。若你想显示自己的
+名字，再考虑 Azure Trusted Signing 或自购 OV。
+
+签发机构（DigiCert、Sectigo、SSL.com、Certum 等）都会给出 token 或云签名入口。**EV 与新的
+OV 证书都不能导出成 pfx**，只能走下面的"方案 B"。
+
+## 2. 方案 A：本机证书 + 内置 signtool
+
+适用于：证书已经装在本机的证书存储里（老 pfx，或 token 厂商安装的 CSP/KSP 让 private key 可
+通过 `CurrentUser\My` 访问），且签名就在这台机器上做。
 
 ### 导入证书（只做一次）
 
@@ -121,6 +164,9 @@ signtool verify /pa /v "path\to\Shirone Studio_0.1.0_x64-setup.exe"
 改配置。EV token 无法在 CI 里用 pfx，要么走厂商的云签名服务，要么用 Cloud HSM（Azure Key
 Vault / AWS KMS + 自定义 `signCommand`）。
 
+开源项目还可以直接用赞助方的 GitHub Action（SignPath 提供 `signpath/github-action-submit-signing-request`），
+不需要自己持有任何密钥：把构建产物交给它，返回已签名文件，再上传到 release。
+
 ## 6. 自签证书（只用于本地测试）
 
 ```powershell
@@ -141,3 +187,14 @@ New-SelfSignedCertificate -Type CodeSigningCert `
   Signing 更快。
 - **更新器签名不是 Authenticode**：Tauri 的自动更新用 minisign 密钥（`tauri signer generate`
   生成），和本文的代码签名是两套东西。
+
+## 8. 对本项目的建议
+
+| 阶段 | 建议 |
+| --- | --- |
+| 现在（个人项目、少量下载） | 保持未签名，在 release 附 `SHA256SUMS.txt` 让用户校验完整性即可 |
+| 想减少"未知发布者"的摩擦 | 申请 **SignPath Foundation** 或 **Certum Open Source**（免费、可进 CI，签名显示赞助方） |
+| 想要自己的发布者名字 | **Azure Trusted Signing**（约 $10/月起，需能通过身份核验）；否则买 OV token，在本机签 |
+| 面向大量用户、需要最强信号 | 再考虑 EV；现阶段性价比低 |
+
+EV 不是门槛，也不是万能：真正减少拦截的是"签名 + 稳定下载量 + 时间"，而不是证书等级。
