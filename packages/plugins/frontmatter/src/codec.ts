@@ -101,11 +101,17 @@ export function composeFrontmatter(
 }
 
 const SAFE_PLAIN = /^[^\s:#[\]{}&*!|>'"%@`,]+$/
+/**
+ * ISO-8601 timestamps carry colons but are plain YAML timestamps, not strings
+ * that need quoting: the blog's moment `published` is written unquoted.
+ */
+const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
 
 function formatScalar(value: unknown): string {
   if (value instanceof Date) return formatDate(value)
   if (typeof value === 'string') {
     if (value.length === 0) return '""'
+    if (ISO_TIMESTAMP.test(value)) return value
     if (
       !SAFE_PLAIN.test(value) ||
       /^(true|false|null|~)$/i.test(value) ||

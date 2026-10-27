@@ -25,6 +25,42 @@
     const current = value[key]
     return Array.isArray(current) ? current.join(', ') : ''
   }
+
+  const pad = (number: number) => String(number).padStart(2, '0')
+
+  function localOffset(): string {
+    const minutes = -new Date().getTimezoneOffset()
+    const sign = minutes >= 0 ? '+' : '-'
+    const absolute = Math.abs(minutes)
+    return `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
+  }
+
+  /** A timestamp shown in the browser's local time, which is what datetime-local wants. */
+  function datetimeValue(key: string): string {
+    const current = value[key]
+    if (current === undefined || current === null || current === '') return ''
+    const date = new Date(String(current))
+    if (Number.isNaN(date.getTime())) return String(current).slice(0, 16)
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+      date.getHours(),
+    )}:${pad(date.getMinutes())}`
+  }
+
+  /**
+   * datetime-local reports wall time without a zone; write it back as a full
+   * ISO timestamp (+08:00 style) so the frontmatter keeps a timestamp, not a
+   * quoted string.
+   */
+  function updateDatetime(key: string, raw: string) {
+    if (raw === '') {
+      update(key, '')
+      return
+    }
+    const previous = stringValue(key)
+    const seconds = /T\d{2}:\d{2}:(\d{2})/.exec(previous)?.[1] ?? '00'
+    const offset = /(?:Z|[+-]\d{2}:\d{2})$/.exec(previous)?.[0] ?? localOffset()
+    update(key, `${raw.slice(0, 16)}:${seconds}${offset}`)
+  }
 </script>
 
 <div class="panel">
@@ -98,8 +134,8 @@
       <input
         id={`fm-${field.key}`}
         type="datetime-local"
-        value={stringValue(field.key).slice(0, 16)}
-        oninput={(event) => update(field.key, event.currentTarget.value)}
+        value={datetimeValue(field.key)}
+        oninput={(event) => updateDatetime(field.key, event.currentTarget.value)}
       />
     {:else if field.type === 'tags'}
       <input

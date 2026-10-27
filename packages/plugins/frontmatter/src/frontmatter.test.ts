@@ -55,6 +55,19 @@ describe('frontmatter codec', () => {
     expect(parsed.data.images).toEqual([{ src: '/a.webp', alt: '图 A' }])
   })
 
+  it('writes ISO timestamps without quotes and keeps them on a round trip', () => {
+    const published = '2026-10-27T08:42:13+08:00'
+    const raw = serializeFrontmatter({ published, mood: '' })
+    expect(raw).toContain('published: 2026-10-27T08:42:13+08:00')
+    expect(raw).not.toContain('"2026-10-27T08:42:13+08:00"')
+    // Strings that merely contain a colon still need quotes.
+    expect(serializeFrontmatter({ description: '12:30 集合' })).toContain(
+      'description: "12:30 集合"',
+    )
+    const parsed = splitFrontmatter(`${raw}\n\n正文`)
+    expect(parsed.data.published).toBe(published)
+  })
+
   it('keeps unknown fields', () => {
     const split = splitFrontmatter(sample.replace('draft: false', 'draft: false\ncustom: keep-me'))
     const raw = serializeFrontmatter(split.data, { order: ['title', 'published'] })
