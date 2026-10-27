@@ -47,12 +47,17 @@ function randomSuffix(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+/** File name for a pasted image, e.g. `pasted-20261027120000-a1b2c3d4.png`. */
+export function pastedImageName(file: File): string {
+  return `pasted-${timestamp()}-${randomSuffix()}.${imageExtension(file)}`
+}
+
 /**
  * Path of a pasted image relative to the document, e.g. `img/pasted-….png`,
  * which is what the Markdown link must contain.
  */
 export function pastedImagePath(docPath: string, file: File): string {
-  return `img/pasted-${timestamp()}-${randomSuffix()}.${imageExtension(file)}`
+  return `img/${pastedImageName(file)}`
 }
 
 /** Root-relative path used when writing the image into the project. */

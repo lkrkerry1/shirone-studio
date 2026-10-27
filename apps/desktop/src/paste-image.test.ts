@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   documentDirectory,
   imageExtension,
+  pastedImageName,
   pastedImagePath,
   readFileBase64,
 } from './paste-image'
@@ -22,6 +23,9 @@ describe('paste image helpers', () => {
     expect(documentDirectory('index.md')).toBe('')
     expect(pastedImagePath('index.md', new File([], 'a.png', { type: 'image/png' }))).toMatch(
       /^img\/pasted-/,
+    )
+    expect(pastedImageName(new File([], 'a.png', { type: 'image/png' }))).toMatch(
+      /^pasted-\d{14}-[0-9a-f]{8}\.png$/,
     )
   })
 

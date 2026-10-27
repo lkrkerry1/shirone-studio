@@ -24,7 +24,7 @@
     saveProjectRoot,
     saveRichEditing,
   } from './settings'
-  import { documentDirectory, pastedImagePath, readFileBase64 } from './paste-image'
+  import { documentDirectory, pastedImageName, readFileBase64 } from './paste-image'
   import CodeEditor from './CodeEditor.svelte'
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
@@ -352,12 +352,33 @@
     }
   }
 
+  /** Root-relative form of an absolute path, or '' when it is outside the root. */
+  function relativeToRoot(root: string, target: string): string {
+    const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+$/, '')
+    const normalizedTarget = target.replace(/\\/g, '/')
+    return normalizedTarget.startsWith(`${normalizedRoot}/`)
+      ? normalizedTarget.slice(normalizedRoot.length + 1)
+      : ''
+  }
+
   async function insertImageFile(file: File): Promise<string | null> {
     if (!context || !current || !layout) return null
-    const docRelative = pastedImagePath(current.path, file)
+    const name = pastedImageName(file)
+    const base64 = await readFileBase64(file)
+    // Moments are flat files whose images live in the site's public folder, so
+    // the Markdown must use the absolute /images/... URL.
+    if (current.type === 'moments') {
+      const publicRelative = relativeToRoot(layout.root, layout.publicRoot)
+      if (publicRelative) {
+        const directory = `${publicRelative}/images/moments/${current.id}`
+        await context.host.writeAsset(layout.root, `${directory}/${name}`, base64)
+        saveState = '图片已插入'
+        return `![](${`/images/moments/${current.id}/${name}`})`
+      }
+    }
+    const docRelative = `img/${name}`
     const directory = documentDirectory(current.path)
     const rootRelative = directory ? `${directory}/${docRelative}` : docRelative
-    const base64 = await readFileBase64(file)
     await context.host.writeAsset(layout.root, rootRelative, base64)
     saveState = '图片已插入'
     return `![](${docRelative})`
