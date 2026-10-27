@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { board, contest, essay, note, singleProblem } from './index'
+import { board, contest, essay, singleProblem } from './index'
 
 describe('algorithm post templates', () => {
   it('only asks for a problem source on the solution templates', () => {
     expect(singleProblem.platform).toBe(true)
     expect(contest.platform).toBe(true)
-    expect(note.platform).toBeUndefined()
     expect(board.platform).toBeUndefined()
     expect(essay.platform).toBeUndefined()
   })
@@ -13,7 +12,7 @@ describe('algorithm post templates', () => {
   it('offers the optional series fields on every template', () => {
     const keys = (template: { fields: Array<{ key: string }> }) =>
       template.fields.map((field) => field.key)
-    for (const template of [singleProblem, contest, note, board, essay]) {
+    for (const template of [singleProblem, contest, board, essay]) {
       expect(keys(template)).toContain('series')
       expect(keys(template)).toContain('seriesOrder')
     }
@@ -42,12 +41,12 @@ describe('algorithm post templates', () => {
     expect(draft.body).toContain('```cpp')
   })
 
-  it('builds contest, note and essay bodies', () => {
+  it('builds contest, board and essay bodies', () => {
     expect(contest.build(undefined, { title: 'ABC480', slug: 'at-abc-480' }).body).toContain(
       '## 题目 A',
     )
     expect(
-      note.build(undefined, { title: '并查集', slug: 'dsu-note', series: 'dsu-topic', seriesOrder: 1 })
+      board.build(undefined, { title: '并查集', slug: 'dsu-board', series: 'dsu-topic', seriesOrder: 1 })
         .frontmatter,
     ).toMatchObject({ category: '笔记', series: 'dsu-topic', seriesOrder: 1 })
     expect(essay.build(undefined, { title: '随笔', slug: 'essay' }).frontmatter).toMatchObject({

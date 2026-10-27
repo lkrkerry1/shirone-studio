@@ -125,23 +125,6 @@ const contest: ContentTemplate = {
   },
 }
 
-const note: ContentTemplate = {
-  id: 'algorithm/note',
-  label: '专题笔记',
-  contentType: 'posts',
-  description: '引言 + 小节，可加入系列',
-  fields: [...commonFields, ...seriesFields],
-  build(_ctx, input) {
-    return baseDraft(
-      input,
-      '笔记',
-      ['（引言：这个专题解决什么问题、适用场景。）', '', '## 小节', '', '', '## 小节二', ''].join(
-        '\n',
-      ),
-    )
-  },
-}
-
 const board: ContentTemplate = {
   id: 'algorithm/board',
   label: '模板 / 板子笔记',
@@ -183,10 +166,10 @@ export const NAME = 'template-posts-algorithm'
 export const inject = ['templates']
 
 export function apply(ctx: Context): void {
-  for (const template of [singleProblem, contest, note, board, essay]) {
+  for (const template of [singleProblem, contest, board, essay]) {
     ctx.templates.register(template)
   }
 }
 
 export default definePlugin({ name: NAME, inject, apply })
-export { singleProblem, contest, note, board, essay }
+export { singleProblem, contest, board, essay }

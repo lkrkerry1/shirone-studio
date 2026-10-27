@@ -132,6 +132,33 @@ export const seriesType: ContentTypeDefinition = {
     const result = await context.host.writeText(context.layout.root, doc.path, content, doc.force ? undefined : doc.hash)
     return { path: doc.path, hash: result.hash }
   },
+  newContent: [
+    {
+      id: 'new-series',
+      label: '新建系列',
+      fields: [
+        { key: 'title', label: '系列标题', type: 'string', required: true },
+        { key: 'slug', label: 'slug', type: 'string', required: true },
+        {
+          key: 'status',
+          label: '状态',
+          type: 'select',
+          options: ['ongoing', 'completed'],
+        },
+      ],
+      async create(_ctx, input) {
+        return {
+          type: 'series',
+          title: String(input.title ?? ''),
+          slug: String(input.slug ?? ''),
+          frontmatter: {
+            status: String(input.status ?? 'ongoing'),
+          },
+          body: '\n',
+        }
+      },
+    },
+  ],
 }
 
 export const name = 'content-series'
