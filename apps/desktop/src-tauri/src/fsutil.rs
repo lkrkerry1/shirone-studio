@@ -290,9 +290,18 @@ pub fn stat_path(root: &str, relative: &str) -> Result<FileStat, String> {
 
 pub fn create_dir(root: &str, relative: &str) -> Result<(), String> {
     let root = canonical_root(root)?;
-    let target = resolve_for_write(&root, &format!("{relative}/.keep"))?;
-    let parent = target.parent().ok_or_else(|| "Invalid directory".to_string())?;
-    fs::create_dir_all(parent).map_err(|error| format!("Cannot create directory: {error}"))
+    let relative = ensure_relative(relative)?;
+    let target = root.join(&relative);
+    // The directory does not exist yet, so resolve_for_write (which canonicalises
+    // the parent) cannot be used here: create it first, then verify it stayed
+    // inside the workspace.
+    fs::create_dir_all(&target).map_err(|error| format!("Cannot create directory: {error}"))?;
+    let canonical =
+        fs::canonicalize(&target).map_err(|error| format!("Cannot resolve directory: {error}"))?;
+    if !canonical.starts_with(&root) {
+        return Err("Path escapes workspace root".into());
+    }
+    Ok(())
 }
 
 /// Render an absolute path the way the frontend stores it: forward slashes and
@@ -359,6 +368,22 @@ mod tests {
         assert!(asset_extension("img/a.JPEG").is_ok());
         assert!(asset_extension("img/a.exe").is_err());
         assert!(asset_extension("img/a").is_err());
+    }
+
+    #[test]
+    fn creates_missing_directories_and_rejects_escapes() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join(format!("dir-test-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let root_string = root.to_string_lossy().into_owned();
+
+        create_dir(&root_string, "content/posts/cf-2272").unwrap();
+        assert!(root.join("content/posts/cf-2272").is_dir());
+
+        assert!(create_dir(&root_string, "../escape").is_err());
+        assert!(create_dir(&root_string, "C:/windows").is_err());
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]
