@@ -35,6 +35,12 @@ class Host implements HostBridge {
       ? { exists: true, isDirectory: false, size: 1, mtimeMs: 1 }
       : { exists: false, isDirectory: false, size: 0, mtimeMs: 0 }
   }
+  async deletePath(_root: string, path: string): Promise<void> {
+    for (const key of [...this.files.keys()]) {
+      if (key === path || key.startsWith(`${path}/`)) this.files.delete(key)
+    }
+  }
+
   async createDir(): Promise<void> {}
   async httpFetch(): Promise<string> {
     return ''
@@ -70,6 +76,17 @@ describe('moments content type', () => {
     expect(file).toContain('桌面亮了。')
     const list = await momentsType.list(context)
     expect(list[0]).toMatchObject({ id: doc.id, subtitle: '工位' })
+  })
+
+  it('removes the moment with its public image folder', async () => {
+    const host = new Host()
+    const ctx = { ...context, host }
+    const doc = await momentsType.create(ctx, { type: 'moments', slug: 'del', body: 'x' })
+    const imagePath = `public/images/moments/${doc.id}/a.png`
+    host.files.set(imagePath, 'x')
+    await momentsType.remove!(ctx, doc.id)
+    expect(host.files.has(`shirones/content/moments/${doc.id}.md`)).toBe(false)
+    expect(host.files.has(imagePath)).toBe(false)
   })
 
   it('defaults the slug to HHMM and suffixes a same-minute collision', async () => {

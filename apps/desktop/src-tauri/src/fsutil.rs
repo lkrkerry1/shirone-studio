@@ -288,6 +288,31 @@ pub fn stat_path(root: &str, relative: &str) -> Result<FileStat, String> {
     })
 }
 
+/// Remove a file or a directory (recursively) inside the workspace.
+///
+/// Missing paths are treated as already deleted so cleanup is idempotent.
+pub fn delete_path(root: &str, relative: &str) -> Result<(), String> {
+    let root = canonical_root(root)?;
+    let relative = ensure_relative(relative)?;
+    let target = root.join(&relative);
+    if !target.exists() {
+        return Ok(());
+    }
+    let canonical =
+        fs::canonicalize(&target).map_err(|error| format!("Cannot resolve path: {error}"))?;
+    if canonical == root {
+        return Err("Refusing to delete the workspace root".into());
+    }
+    if !canonical.starts_with(&root) {
+        return Err("Path escapes workspace root".into());
+    }
+    if canonical.is_dir() {
+        fs::remove_dir_all(&canonical).map_err(|error| format!("Cannot delete directory: {error}"))
+    } else {
+        fs::remove_file(&canonical).map_err(|error| format!("Cannot delete file: {error}"))
+    }
+}
+
 pub fn create_dir(root: &str, relative: &str) -> Result<(), String> {
     let root = canonical_root(root)?;
     let relative = ensure_relative(relative)?;
@@ -368,6 +393,30 @@ mod tests {
         assert!(asset_extension("img/a.JPEG").is_ok());
         assert!(asset_extension("img/a.exe").is_err());
         assert!(asset_extension("img/a").is_err());
+    }
+
+    #[test]
+    fn deletes_files_and_directories_but_never_escapes() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join(format!("delete-test-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let root_string = root.to_string_lossy().into_owned();
+
+        fs::create_dir_all(root.join("posts/a")).unwrap();
+        fs::write(root.join("posts/a/index.md"), "x").unwrap();
+        delete_path(&root_string, "posts/a").unwrap();
+        assert!(!root.join("posts/a").exists());
+
+        fs::write(root.join("flat.md"), "x").unwrap();
+        delete_path(&root_string, "flat.md").unwrap();
+        assert!(!root.join("flat.md").exists());
+
+        // Idempotent for missing paths, but never for the root or escapes.
+        delete_path(&root_string, "missing.md").unwrap();
+        assert!(delete_path(&root_string, "../escape").is_err());
+        assert!(delete_path(&root_string, ".").is_err());
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]

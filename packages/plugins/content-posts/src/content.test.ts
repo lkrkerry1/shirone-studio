@@ -71,6 +71,13 @@ class MockHost implements HostBridge {
     return { exists: false, isDirectory: false, size: 0, mtimeMs: 0 }
   }
 
+  async deletePath(_root: string, path: string): Promise<void> {
+    for (const key of [...this.files.keys()]) {
+      if (key === path || key.startsWith(`${path}/`)) this.files.delete(key)
+    }
+    this.dirs.delete(path)
+  }
+
   async createDir(_root: string, relativePath: string): Promise<void> {
     this.dirs.add(relativePath)
   }
@@ -136,6 +143,21 @@ describe('content types', () => {
     })
     expect(saved.hash).toContain('hash:')
     expect(host.files.get('shirones/content/posts/new-post/index.md')).toContain('改过的正文')
+  })
+
+  it('removes a post bundle with its file', async () => {
+    const host = new MockHost()
+    const context = makeContext(host)
+    const created = await postsType.create(context, {
+      type: 'posts',
+      title: 'Bye',
+      slug: 'bye',
+      body: '\n',
+    })
+    expect(host.files.has('shirones/content/posts/bye/index.md')).toBe(true)
+    await postsType.remove!(context, created.id)
+    expect(host.files.has('shirones/content/posts/bye/index.md')).toBe(false)
+    expect(await postsType.list(context)).toHaveLength(0)
   })
 
   it('creates and reads series files', async () => {

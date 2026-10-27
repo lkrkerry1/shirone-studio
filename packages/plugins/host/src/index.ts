@@ -69,6 +69,10 @@ export class HostService extends Service implements HostBridge {
     return invoke<void>('create_dir', { root, path: relativePath })
   }
 
+  deletePath(root: string, relativePath: string): Promise<void> {
+    return invoke<void>('delete_path', { root, path: relativePath })
+  }
+
   httpFetch(url: string, options?: { cookie?: string }): Promise<string> {
     return invoke<string>('http_fetch', { url, cookie: options?.cookie })
   }

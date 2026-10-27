@@ -146,6 +146,18 @@ export const momentsType: ContentTypeDefinition = {
     await context.host.writeText(root, path, content)
     return momentsType.read(ctx, id)
   },
+  async remove(ctx: unknown, ref: string): Promise<void> {
+    const context = asContext(ctx)
+    const root = context.layout.root
+    const path = relativeTo(root, joinPath(basePath(context.layout), `${ref}.md`))
+    await context.host.deletePath(root, path)
+    try {
+      const images = relativeTo(root, joinPath(context.layout.publicRoot, 'images/moments', ref))
+      await context.host.deletePath(root, images)
+    } catch {
+      // A moment without images has nothing to clean up.
+    }
+  },
   async save(ctx: unknown, doc: ContentDocument): Promise<{ path: string; hash?: string }> {
     const context = asContext(ctx)
     if (!doc.frontmatter) throw new Error('瞬间缺少 frontmatter')

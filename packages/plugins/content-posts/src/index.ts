@@ -180,6 +180,12 @@ export function createPostType(): ContentTypeDefinition {
       await context.host.writeText(root, path, content)
       return this.read(ctx, id)
     },
+    async remove(ctx: unknown, ref: string): Promise<void> {
+      const context = asContext(ctx)
+      const root = context.layout.root
+      const dir = `${relativeTo(root, basePath(context.layout))}/${ref}`
+      await context.host.deletePath(root, dir)
+    },
     async save(ctx: unknown, doc: ContentDocument): Promise<{ path: string; hash?: string }> {
       const context = asContext(ctx)
       const root = context.layout.root

@@ -32,6 +32,12 @@ class Host implements HostBridge {
       ? { exists: true, isDirectory: false, size: 1, mtimeMs: 1 }
       : { exists: false, isDirectory: false, size: 0, mtimeMs: 0 }
   }
+  async deletePath(_root: string, path: string): Promise<void> {
+    for (const key of [...this.files.keys()]) {
+      if (key === path || key.startsWith(`${path}/`)) this.files.delete(key)
+    }
+  }
+
   async createDir(): Promise<void> {}
   async httpFetch(): Promise<string> {
     return ''

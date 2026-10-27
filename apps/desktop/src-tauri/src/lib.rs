@@ -237,6 +237,7 @@ pub fn run() {
             commands::list_dir,
             commands::stat_path,
             commands::create_dir,
+            commands::delete_path,
             commands::http_fetch,
             commands::git_status,
             commands::git_stage,

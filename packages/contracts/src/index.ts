@@ -101,6 +101,8 @@ export interface ContentTypeDefinition {
   read(ctx: unknown, ref: string): Promise<ContentDocument>
   create(ctx: unknown, draft: ContentDraft): Promise<ContentDocument>
   save(ctx: unknown, doc: ContentDocument): Promise<{ path: string; hash?: string }>
+  /** Delete an existing document, including its assets when the type owns any. */
+  remove?(ctx: unknown, ref: string): Promise<void>
   newContent?: NewContentProvider[]
 }
 

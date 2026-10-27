@@ -104,6 +104,11 @@ async fn run_blocking<T: Send + 'static>(
 }
 
 #[tauri::command]
+pub async fn delete_path(root: String, path: String) -> Result<(), String> {
+    run_blocking(move || fsutil::delete_path(&root, &path)).await
+}
+
+#[tauri::command]
 pub async fn git_status(root: String) -> Result<GitStatus, String> {
     run_blocking(move || git::status(&root)).await
 }

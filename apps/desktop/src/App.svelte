@@ -63,6 +63,15 @@
   let closing = $state(false)
   /** Set when a close attempt could not save; the next close discards instead. */
   let discardOnClose = false
+  let deleteTarget = $state<{ type: ContentTypeDefinition; item: ContentSummary } | null>(null)
+  let contextMenu = $state<{
+    x: number
+    y: number
+    type: ContentTypeDefinition
+    item: ContentSummary
+  } | null>(null)
+  let deleting = $state(false)
+  let deleteError = $state('')
 
   const groups = $derived([...new Set(types.map((type) => type.group))])
   const currentType = $derived(
@@ -340,6 +349,39 @@
     void open(currentType, current.meta, { discard: true })
   }
 
+  function requestDelete(type: ContentTypeDefinition, item: ContentSummary) {
+    contextMenu = null
+    deleteError = ''
+    deleteTarget = { type, item }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || !context || !layout) return
+    const { type, item } = deleteTarget
+    if (!type.remove) {
+      deleteError = '该内容类型不支持在应用内删除。'
+      return
+    }
+    deleting = true
+    deleteError = ''
+    try {
+      await type.remove(context, item.id)
+      if (current?.type === type.id && current.id === item.id) {
+        current = null
+        body = ''
+        originalBody = ''
+        dirty = false
+        saveState = ''
+      }
+      deleteTarget = null
+      await refresh()
+    } catch (cause) {
+      deleteError = cause instanceof Error ? cause.message : String(cause)
+    } finally {
+      deleting = false
+    }
+  }
+
   async function checkExternalChange(): Promise<void> {
     if (!context || !current || !currentType || !layout || dirty || saving || closing) return
     try {
@@ -467,7 +509,7 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKey} />
+<svelte:window onkeydown={handleKey} onclick={() => (contextMenu = null)} />
 
 <div class="app">
   <header class="topbar">
@@ -515,6 +557,15 @@
                       class:active={current?.type === type.id && current?.id === item.id}
                       class="item"
                       onclick={() => void open(type, item)}
+                      oncontextmenu={(event) => {
+                        event.preventDefault()
+                        contextMenu = {
+                          x: event.clientX,
+                          y: event.clientY,
+                          type,
+                          item,
+                        }
+                      }}
                     >
                       <span class="item-title">{item.title}</span>
                       {#if item.date}<span class="item-date">{item.date.slice(0, 10)}</span>{/if}
@@ -560,6 +611,14 @@
               onclick={toggleInfoPanel}
             >
               {showInfo ? '收起属性' : '属性'}
+            </button>
+            <button
+              class="secondary compact danger"
+              onclick={() => {
+                if (current && currentType) requestDelete(currentType, current.meta)
+              }}
+            >
+              删除
             </button>
           </div>
         </div>
@@ -661,6 +720,42 @@
         if (summary) await open(type, summary)
       }}
     />
+  {/if}
+
+  {#if contextMenu}
+    <div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px" role="menu">
+      <button
+        class="danger"
+        role="menuitem"
+        onclick={() => {
+          if (contextMenu) requestDelete(contextMenu.type, contextMenu.item)
+        }}
+      >
+        删除
+      </button>
+    </div>
+  {/if}
+
+  {#if deleteTarget}
+    <div
+      class="overlay"
+      role="presentation"
+      onclick={(event) => {
+        if (event.target === event.currentTarget && !deleting) deleteTarget = null
+      }}
+    >
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="删除内容">
+        <h2>删除「{deleteTarget.item.title}」？</h2>
+        <p>文件会从磁盘删除，无法撤销。</p>
+        {#if deleteError}<p class="delete-error">{deleteError}</p>{/if}
+        <div class="buttons">
+          <button disabled={deleting} onclick={() => (deleteTarget = null)}>取消</button>
+          <button class="danger" disabled={deleting} onclick={() => void confirmDelete()}>
+            {deleting ? '删除中…' : '删除'}
+          </button>
+        </div>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -996,5 +1091,102 @@
       grid-column: 1 / -1;
       justify-content: flex-end;
     }
+  }
+
+  .context-menu {
+    position: fixed;
+    z-index: 40;
+    min-width: 96px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+  }
+
+  .context-menu button {
+    display: block;
+    width: 100%;
+    padding: 5px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .context-menu button.danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+  }
+
+  .docstatus button.danger {
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+    color: var(--danger);
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--overlay);
+  }
+
+  .dialog {
+    width: min(420px, 100%);
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-2);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.25);
+  }
+
+  .dialog h2 {
+    margin: 0 0 8px;
+    font-size: 15px;
+  }
+
+  .dialog p {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .dialog .delete-error {
+    color: var(--danger);
+  }
+
+  .dialog .buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dialog button {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .dialog button.danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: white;
+  }
+
+  .dialog button:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 </style>

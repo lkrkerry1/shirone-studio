@@ -121,6 +121,12 @@ export const seriesType: ContentTypeDefinition = {
     await context.host.writeText(root, path, content)
     return seriesType.read(ctx, id)
   },
+  async remove(ctx: unknown, ref: string): Promise<void> {
+    const context = asContext(ctx)
+    const root = context.layout.root
+    const path = relativeTo(root, joinPath(basePath(context.layout), `${ref}.md`))
+    await context.host.deletePath(root, path)
+  },
   async save(ctx: unknown, doc: ContentDocument): Promise<{ path: string; hash?: string }> {
     const context = asContext(ctx)
     if (!doc.frontmatter) throw new Error('系列缺少 frontmatter')
