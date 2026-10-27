@@ -652,6 +652,7 @@
       {types}
       {templates}
       {platforms}
+      detectPlatform={(input) => context?.platforms.detect(input)?.id ?? null}
       onclose={() => (showNew = false)}
       oncreated={async (type, id) => {
         showNew = false

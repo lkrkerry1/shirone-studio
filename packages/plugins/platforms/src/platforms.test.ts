@@ -12,6 +12,8 @@ const luogu = adapters.find((adapter) => adapter.id === 'luogu')!
 const codeforces = adapters.find((adapter) => adapter.id === 'codeforces')!
 const atcoder = adapters.find((adapter) => adapter.id === 'atcoder')!
 
+const detect = (input: string) => adapters.find((adapter) => adapter.matches?.(input))?.id ?? null
+
 describe('platform adapters', () => {
   it('parses URLs and bare IDs', () => {
     expect(luogu.parseInput('P2024')?.url).toBe('https://www.luogu.com.cn/problem/P2024')
@@ -22,6 +24,17 @@ describe('platform adapters', () => {
     expect(
       atcoder.parseInput('https://atcoder.jp/contests/abc479/tasks/abc479_c')?.index,
     ).toBe('C')
+  })
+
+  it('detects the platform from an id or URL', () => {
+    expect(detect('P2024')).toBe('luogu')
+    expect(detect('https://www.luogu.com.cn/problem/P2024')).toBe('luogu')
+    expect(detect('2261E')).toBe('codeforces')
+    expect(detect('2272')).toBe('codeforces')
+    expect(detect('https://codeforces.com/contest/2272')).toBe('codeforces')
+    expect(detect('abc479_c')).toBe('atcoder')
+    expect(detect('https://atcoder.jp/contests/abc479')).toBe('atcoder')
+    expect(detect('随便什么')).toBe(null)
   })
 
   it('fetches and formats Luogu titles', async () => {
@@ -56,6 +69,22 @@ describe('platform adapters', () => {
     expect(codeforces.suggestSlug(meta)).toBe('cf-2261e')
   })
 
+  it('translates the tags a problem page reports', async () => {
+    const meta = await codeforces.fetchProblem(
+      hostWith(
+        JSON.stringify({
+          result: {
+            problems: [
+              { contestId: 2261, index: 'E', name: 'Example', tags: ['dp', 'greedy', 'trees'] },
+            ],
+          },
+        }),
+      ),
+      codeforces.parseInput('2261E')!,
+    )
+    expect(meta.tags).toEqual(['Codeforces', '动态规划', '贪心', '树'])
+  })
+
   it('recognises Codeforces contest URLs and fills name and tags', async () => {
     const ref = codeforces.parseInput('https://codeforces.com/contest/2272')!
     expect(ref.contestId).toBe('2272')
@@ -73,7 +102,7 @@ describe('platform adapters', () => {
     )
     expect(meta.displayTitle).toBe('Codeforces Round 2272 (Div. 2)')
     expect(meta.contestTitle).toBe('Codeforces Round 2272 (Div. 2)')
-    expect(meta.tags).toEqual(['Codeforces', 'Div. 2'])
+    expect(meta.tags).toEqual(['Codeforces', '模拟赛', 'Div. 2'])
     expect(codeforces.suggestSlug(meta)).toBe('cf-2272')
     expect(codeforces.suggestTitle(meta)).toBe('Codeforces Round 2272 (Div. 2)')
   })
@@ -87,7 +116,7 @@ describe('platform adapters', () => {
       ref,
     )
     expect(meta.displayTitle).toBe('AtCoder Beginner Contest 479')
-    expect(meta.tags).toEqual(['AtCoder', 'ABC'])
+    expect(meta.tags).toEqual(['AtCoder', '模拟赛', 'ABC'])
     expect(atcoder.suggestSlug(meta)).toBe('at-abc-479')
   })
 })

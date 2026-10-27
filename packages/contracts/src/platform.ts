@@ -25,6 +25,8 @@ export interface PlatformAdapter {
   name: string
   slugPrefix: string
   supportsContest: boolean
+  /** True when the pasted id or URL belongs to this platform. */
+  matches?(input: string): boolean
   parseInput(input: string): ProblemRef | null
   fetchProblem(host: HostBridge, ref: ProblemRef): Promise<ProblemMeta>
   suggestSlug(meta: ProblemMeta): string

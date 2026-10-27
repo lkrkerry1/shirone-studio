@@ -1,4 +1,5 @@
 import type { HostBridge, PlatformAdapter, ProblemMeta, ProblemRef } from '@shirone-studio/contracts'
+import { extractLuoguTags, translateCodeforcesTags } from './tags'
 
 function decodeEntities(value: string): string {
   return value
@@ -28,6 +29,10 @@ const luogu: PlatformAdapter = {
   name: '洛谷',
   slugPrefix: 'lg-',
   supportsContest: false,
+  matches(input) {
+    const text = input.trim()
+    return /luogu\.com\.cn/i.test(text) || /^[A-Z]\d+[A-Za-z0-9]*$/.test(text)
+  },
   parseInput(input) {
     const text = input.trim()
     const url = /luogu\.com\.cn\/problem\/([A-Za-z]+\d+[A-Za-z0-9]*)/i.exec(text)
@@ -46,7 +51,7 @@ const luogu: PlatformAdapter = {
       title,
       displayTitle: `洛谷 ${title}`,
       url: ref.url,
-      tags: ['洛谷'],
+      tags: ['洛谷', ...extractLuoguTags(html)],
     }
   },
   suggestSlug(meta) {
@@ -76,7 +81,7 @@ interface CodeforcesContestResponse {
 
 /** Tags a contest name implies, e.g. "Codeforces Round 2272 (Div. 2)". */
 function codeforcesContestTags(name: string): string[] {
-  const tags = ['Codeforces']
+  const tags = ['Codeforces', '模拟赛']
   const division = /Div\.?\s*(\d)/i.exec(name)
   if (division) tags.push(`Div. ${division[1]}`)
   if (/educational/i.test(name)) tags.push('Educational Round')
@@ -89,6 +94,12 @@ const codeforces: PlatformAdapter = {
   name: 'Codeforces',
   slugPrefix: 'cf-',
   supportsContest: true,
+  matches(input) {
+    const text = input.trim()
+    return (
+      /codeforces\.com/i.test(text) || /^\d+[A-Z]\d?$/i.test(text) || /^\d+$/.test(text)
+    )
+  },
   parseInput(input) {
     const text = input.trim()
     const url = /codeforces\.com\/(?:contest|problemset\/problem)\/(\d+)\/(?:problem\/)?([A-Z]\d?)/i.exec(
@@ -154,7 +165,7 @@ const codeforces: PlatformAdapter = {
       title: name,
       displayTitle,
       url: ref.url,
-      tags: ['Codeforces'],
+      tags: ['Codeforces', ...translateCodeforcesTags(problem?.tags)],
     }
   },
   suggestSlug(meta) {
@@ -174,6 +185,14 @@ const atcoder: PlatformAdapter = {
   name: 'AtCoder',
   slugPrefix: 'at-',
   supportsContest: true,
+  matches(input) {
+    const text = input.trim()
+    return (
+      /atcoder\.jp/i.test(text) ||
+      /^[a-z0-9]+_[a-z]\d?$/i.test(text) ||
+      /^[a-z]{2,}\d{2,}$/i.test(text)
+    )
+  },
   parseInput(input) {
     const text = input.trim()
     const url = /atcoder\.jp\/contests\/([^/]+)\/tasks\/([^/?#]+)/i.exec(text)
@@ -205,7 +224,7 @@ const atcoder: PlatformAdapter = {
     if (!ref.index) {
       const html = await host.httpFetch(ref.url)
       const name = htmlTitle(html).replace(/\s*-\s*AtCoder\s*$/i, '') || ref.id
-      const tags = ['AtCoder']
+      const tags = ['AtCoder', '模拟赛']
       if (/beginner/i.test(name)) tags.push('ABC')
       if (/regular/i.test(name)) tags.push('ARC')
       if (/grand/i.test(name)) tags.push('AGC')
@@ -254,6 +273,9 @@ const manual: PlatformAdapter = {
   name: '手动 / 其他',
   slugPrefix: '',
   supportsContest: false,
+  matches() {
+    return false
+  },
   parseInput(input) {
     const text = input.trim()
     if (!text) return null

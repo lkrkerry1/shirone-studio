@@ -35,6 +35,16 @@ export class PlatformRegistry extends Service {
     return [...this.adapters.values()].sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  /** First registered adapter that recognises the pasted id or URL. */
+  detect(input: string): PlatformAdapter | undefined {
+    const text = input.trim()
+    if (!text) return undefined
+    for (const adapter of this.adapters.values()) {
+      if (adapter.matches?.(text)) return adapter
+    }
+    return undefined
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

@@ -8,11 +8,13 @@
   import type { StudioApp } from './boot'
   import Select from './Select.svelte'
 
-  let { context, types, templates, platforms, onclose, oncreated }: {
+  let { context, types, templates, platforms, detectPlatform, onclose, oncreated }: {
     context: StudioApp['context']
     types: ContentTypeDefinition[]
     templates: ContentTemplate[]
     platforms: PlatformAdapter[]
+    /** Platform id that recognises this id or URL, if any. */
+    detectPlatform: (input: string) => string | null
     onclose: () => void
     oncreated: (type: ContentTypeDefinition, id: string) => void
   } = $props()
@@ -89,8 +91,11 @@
   })
 
   async function fetchPlatform() {
-    const adapter = platforms.find((candidate) => candidate.id === platformId)
+    // A pasted URL may belong to another platform than the selected one.
+    const detected = detectPlatform(platformInput)
+    const adapter = platforms.find((candidate) => candidate.id === (detected ?? platformId))
     if (!adapter) return
+    if (adapter.id !== platformId) platformId = adapter.id
     const ref = adapter.parseInput(platformInput)
     if (!ref) {
       platformMessage = '无法识别这个题号或 URL'
@@ -199,7 +204,13 @@
           onchange={(next) => (platformId = next)}
         />
         <input
-          bind:value={platformInput}
+          value={platformInput}
+          oninput={(event) => {
+            platformInput = event.currentTarget.value
+            // Switch the platform as soon as a URL gives it away.
+            const detected = detectPlatform(platformInput)
+            if (detected && detected !== platformId) platformId = detected
+          }}
           placeholder="P2024 / 2261E / abc479_c / 题面 URL"
           aria-label="题号或链接"
           spellcheck="false"
