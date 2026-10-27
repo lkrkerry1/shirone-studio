@@ -73,6 +73,8 @@ export interface NewContentProvider {
   label: string
   description?: string
   fields?: FieldDefinition[]
+  /** Show the platform / problem-number row for this template. */
+  platform?: boolean
   create(ctx: unknown, input: Record<string, unknown>): Promise<ContentDraft>
 }
 

@@ -200,14 +200,21 @@ export function createPostType(): ContentTypeDefinition {
           { key: 'title', label: '标题', type: 'string', required: true },
           { key: 'slug', label: 'slug', type: 'string', required: true },
           { key: 'description', label: '摘要', type: 'text' },
+          { key: 'series', label: '系列 slug', type: 'string' },
+          { key: 'seriesOrder', label: '系列序号', type: 'number' },
         ],
         async create(_ctx, input) {
+          const series = String(input.series ?? '').trim()
+          const seriesOrder =
+            typeof input.seriesOrder === 'number' ? input.seriesOrder : undefined
           return {
             type: 'posts',
             title: String(input.title ?? ''),
             slug: String(input.slug ?? ''),
             frontmatter: {
               description: String(input.description ?? ''),
+              ...(series ? { series } : {}),
+              ...(seriesOrder === undefined ? {} : { seriesOrder }),
             },
             body: '\n',
           }

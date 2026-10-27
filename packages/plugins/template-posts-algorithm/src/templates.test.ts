@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { contest, essay, note, singleProblem } from './index'
+import { board, contest, essay, note, singleProblem } from './index'
 
 describe('algorithm post templates', () => {
+  it('only asks for a problem source on the solution templates', () => {
+    expect(singleProblem.platform).toBe(true)
+    expect(contest.platform).toBe(true)
+    expect(note.platform).toBeUndefined()
+    expect(board.platform).toBeUndefined()
+    expect(essay.platform).toBeUndefined()
+  })
+
+  it('offers the optional series fields on every template', () => {
+    const keys = (template: { fields: Array<{ key: string }> }) =>
+      template.fields.map((field) => field.key)
+    for (const template of [singleProblem, contest, note, board, essay]) {
+      expect(keys(template)).toContain('series')
+      expect(keys(template)).toContain('seriesOrder')
+    }
+    const draft = essay.build(undefined, { title: '随笔', slug: 'essay', series: 'daily', seriesOrder: 3 })
+    expect(draft.frontmatter).toMatchObject({ series: 'daily', seriesOrder: 3 })
+    const plain = essay.build(undefined, { title: '随笔', slug: 'essay' })
+    expect(plain.frontmatter).not.toHaveProperty('series')
+  })
+
   it('builds a single problem draft with frontmatter defaults', () => {
     const draft = singleProblem.build(undefined, {
       title: '洛谷 P2024 食物链',

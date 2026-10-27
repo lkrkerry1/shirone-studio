@@ -36,6 +36,8 @@ function baseDraft(
   body: string,
   extras: Record<string, unknown> = {},
 ): ContentDraft {
+  const series = asString(input, 'series')
+  const seriesOrder = input.seriesOrder
   return {
     type: 'posts',
     title: asString(input, 'title'),
@@ -48,6 +50,8 @@ function baseDraft(
       category,
       lang: 'zh_CN',
       draft: true,
+      ...(series ? { series } : {}),
+      ...(typeof seriesOrder === 'number' ? { seriesOrder } : {}),
       ...extras,
     },
   }
@@ -58,7 +62,8 @@ const singleProblem: ContentTemplate = {
   label: '单题题解',
   contentType: 'posts',
   description: '来源引用 + 题意 + 思路 + C++ 代码',
-  fields: commonFields,
+  fields: [...commonFields, ...seriesFields],
+  platform: true,
   build(_ctx, input) {
     const source = input.problemUrl
       ? `> 来源：[${asString(input, 'platformName')} ${asString(input, 'problemId')}](${asString(input, 'problemUrl')})`
@@ -90,7 +95,8 @@ const contest: ContentTemplate = {
   label: '整赛题解',
   contentType: 'posts',
   description: '开场段 + 多题小节骨架',
-  fields: commonFields,
+  fields: [...commonFields, ...seriesFields],
+  platform: true,
   build(_ctx, input) {
     return baseDraft(
       input,
@@ -126,17 +132,12 @@ const note: ContentTemplate = {
   description: '引言 + 小节，可加入系列',
   fields: [...commonFields, ...seriesFields],
   build(_ctx, input) {
-    const seriesOrder = input.seriesOrder
     return baseDraft(
       input,
       '笔记',
       ['（引言：这个专题解决什么问题、适用场景。）', '', '## 小节', '', '', '## 小节二', ''].join(
         '\n',
       ),
-      {
-        series: asString(input, 'series') || undefined,
-        seriesOrder: typeof seriesOrder === 'number' ? seriesOrder : undefined,
-      },
     )
   },
 }
@@ -163,9 +164,6 @@ const board: ContentTemplate = {
         '## 使用示例',
         '',
       ].join('\n'),
-      {
-        series: asString(input, 'series') || undefined,
-      },
     )
   },
 }
@@ -175,7 +173,7 @@ const essay: ContentTemplate = {
   label: '随笔',
   contentType: 'posts',
   description: '轻量随笔 / 工具折腾',
-  fields: commonFields,
+  fields: [...commonFields, ...seriesFields],
   build(_ctx, input) {
     return baseDraft(input, '随笔', ['（正文）', ''].join('\n'))
   },

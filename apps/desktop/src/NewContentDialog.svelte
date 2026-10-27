@@ -27,6 +27,8 @@
     kind: 'template' | 'provider'
     typeId: string
     fields: FieldDefinition[]
+    /** Whether this template wants the platform / problem row. */
+    platform: boolean
   }
 
   const entries: Entry[] = $derived([
@@ -37,6 +39,7 @@
       kind: 'template' as const,
       typeId: template.contentType,
       fields: template.fields,
+      platform: template.platform ?? false,
     })),
     ...types.flatMap((type) =>
       (type.newContent ?? []).map((provider) => ({
@@ -46,6 +49,7 @@
         kind: 'provider' as const,
         typeId: type.id,
         fields: provider.fields ?? [],
+        platform: provider.platform ?? false,
       })),
     ),
   ])
@@ -201,7 +205,7 @@
       <p class="hint">{selected.description}</p>
     {/if}
 
-    {#if selected?.typeId === 'posts' && platforms.length > 0}
+    {#if selected?.platform && platforms.length > 0}
       <div class="platform-row">
         <Select
           value={platformId}

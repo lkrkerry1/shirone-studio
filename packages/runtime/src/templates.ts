@@ -8,6 +8,8 @@ export interface ContentTemplate {
   contentType: string
   description?: string
   fields: FieldDefinition[]
+  /** Show the platform / problem-number row for this template. */
+  platform?: boolean
   build(ctx: unknown, input: Record<string, unknown>): ContentDraft
 }
 
