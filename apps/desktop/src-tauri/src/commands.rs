@@ -39,8 +39,27 @@ pub fn create_dir(root: String, path: String) -> Result<(), String> {
     fsutil::create_dir(&root, &path)
 }
 
+/// One shared client so anti-bot cookies (Luogu's C3VK) survive across the
+/// several requests one fetch needs.
+fn http_client() -> Result<&'static reqwest::Client, String> {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    if let Some(client) = CLIENT.get() {
+        return Ok(client);
+    }
+    let client = reqwest::Client::builder()
+        .user_agent("ShironeStudio/0.1 (+https://github.com/lkrkerry1/shirone-studio)")
+        .timeout(std::time::Duration::from_secs(12))
+        .cookie_store(true)
+        .build()
+        .map_err(|error| format!("Cannot create HTTP client: {error}"))?;
+    let _ = CLIENT.set(client);
+    CLIENT
+        .get()
+        .ok_or_else(|| "Cannot create HTTP client".to_string())
+}
+
 #[tauri::command]
-pub async fn http_fetch(url: String) -> Result<String, String> {
+pub async fn http_fetch(url: String, cookie: Option<String>) -> Result<String, String> {
     let parsed = reqwest::Url::parse(&url).map_err(|error| format!("Invalid URL: {error}"))?;
     let allowed = matches!(
         parsed.host_str(),
@@ -53,13 +72,12 @@ pub async fn http_fetch(url: String) -> Result<String, String> {
     if !allowed {
         return Err("Host is not allowed".into());
     }
-    let client = reqwest::Client::builder()
-        .user_agent("ShironeStudio/0.1 (+https://github.com/lkrkerry1/shirone-studio)")
-        .timeout(std::time::Duration::from_secs(12))
-        .build()
-        .map_err(|error| format!("Cannot create HTTP client: {error}"))?;
-    let response = client
-        .get(parsed)
+    // The user's login cookie is only ever sent to allow-listed hosts.
+    let mut request = http_client()?.get(parsed);
+    if let Some(cookie) = cookie.filter(|value| !value.trim().is_empty()) {
+        request = request.header(reqwest::header::COOKIE, cookie.trim());
+    }
+    let response = request
         .send()
         .await
         .map_err(|error| format!("Network error: {error}"))?;

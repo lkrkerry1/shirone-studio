@@ -1,5 +1,11 @@
-import type { HostBridge, PlatformAdapter, ProblemMeta, ProblemRef } from '@shirone-studio/contracts'
-import { extractLuoguTags, translateCodeforcesTags } from './tags'
+import type {
+  FetchOptions,
+  HostBridge,
+  PlatformAdapter,
+  ProblemMeta,
+  ProblemRef,
+} from '@shirone-studio/contracts'
+import { luoguTagIds, luoguTagName, translateCodeforcesTags } from './tags'
 
 function decodeEntities(value: string): string {
   return value
@@ -41,17 +47,37 @@ const luogu: PlatformAdapter = {
     const upper = id.toUpperCase()
     return { platform: 'luogu', id: upper, url: `https://www.luogu.com.cn/problem/${upper}` }
   },
-  async fetchProblem(host: HostBridge, ref: ProblemRef): Promise<ProblemMeta> {
-    const html = await host.httpFetch(ref.url)
+  async fetchProblem(
+    host: HostBridge,
+    ref: ProblemRef,
+    options?: FetchOptions,
+  ): Promise<ProblemMeta> {
+    const html = await host.httpFetch(ref.url, { cookie: options?.cookie })
     const raw = htmlTitle(html).replace(/\s*-\s*洛谷\s*$/i, '')
     const title = raw || ref.id
+    // Tag names need a login: the page only carries numeric ids, and the list
+    // pages that render the names are behind Luogu's anti-bot cookies.
+    const names: string[] = []
+    if (options?.cookie) {
+      for (const id of luoguTagIds(html).slice(0, 4)) {
+        try {
+          const list = await host.httpFetch(`https://www.luogu.com.cn/problem/list?tag=${id}`, {
+            cookie: options.cookie,
+          })
+          const name = luoguTagName(list, id)
+          if (name) names.push(name)
+        } catch {
+          // Tags are best effort; a failed tag page must not fail the fetch.
+        }
+      }
+    }
     return {
       platform: 'luogu',
       problemId: ref.id,
       title,
       displayTitle: `洛谷 ${title}`,
       url: ref.url,
-      tags: ['洛谷', ...extractLuoguTags(html)],
+      tags: ['洛谷', ...names],
     }
   },
   suggestSlug(meta) {

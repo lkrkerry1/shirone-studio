@@ -47,6 +47,30 @@ describe('platform adapters', () => {
     expect(luogu.suggestedTags(meta)).toEqual(['洛谷'])
   })
 
+  it('reads Luogu tag names with a login cookie', async () => {
+    const problem = '<script id="lentille-context" type="application/json">{"data":{"problem":{"tags":[18,47]}}}</script>'
+    const calls: Array<{ url: string; cookie?: string }> = []
+    const host = {
+      httpFetch: async (url: string, options?: { cookie?: string }) => {
+        calls.push({ url, cookie: options?.cookie })
+        if (url.includes('tag=18')) return '<a href="/problem/list?tag=18">2001</a>'
+        if (url.includes('tag=47')) return '<a href="/problem/list?tag=47">并查集</a>'
+        return problem
+      },
+    } as unknown as HostBridge
+    const meta = await luogu.fetchProblem(host, luogu.parseInput('P2024')!, {
+      cookie: '_uid=1129046',
+    })
+    expect(meta.tags).toEqual(['洛谷', '2001', '并查集'])
+    expect(calls.every((call) => call.cookie === '_uid=1129046')).toBe(true)
+  })
+
+  it('keeps only the platform tag without a Luogu cookie', async () => {
+    const problem = '<script id="lentille-context" type="application/json">{"data":{"problem":{"tags":[18,47]}}}</script>'
+    const meta = await luogu.fetchProblem(hostWith(problem), luogu.parseInput('P2024')!)
+    expect(meta.tags).toEqual(['洛谷'])
+  })
+
   it('fetches and formats AtCoder titles', async () => {
     const meta = await atcoder.fetchProblem(
       hostWith('<title>C - Bento Packing</title>'),

@@ -2,6 +2,7 @@ const PROJECT_ROOT_KEY = 'shirone-studio.projectRoot'
 const INFO_PANEL_KEY = 'shirone-studio.infoPanel'
 const RICH_EDITING_KEY = 'shirone-studio.richEditing'
 const AUTOSAVE_KEY = 'shirone-studio.autosave'
+const LUOGU_COOKIE_KEY = 'shirone-studio.luoguCookie'
 const DEFAULT_PROJECT_ROOT = 'C:/Users/lkrkerry/Documents/DSH/Codes/Blog'
 
 export function loadProjectRoot(): string {
@@ -43,4 +44,16 @@ export function loadAutosave(): boolean {
 
 export function saveAutosave(enabled: boolean): void {
   localStorage.setItem(AUTOSAVE_KEY, String(enabled))
+}
+
+/**
+ * Luogu login cookie (`__client_id=…; _uid=…`), stored locally so tag names can
+ * be scraped. It never leaves the machine except in requests to luogu.com.cn.
+ */
+export function loadLuoguCookie(): string {
+  return localStorage.getItem(LUOGU_COOKIE_KEY) ?? ''
+}
+
+export function saveLuoguCookie(value: string): void {
+  localStorage.setItem(LUOGU_COOKIE_KEY, value)
 }

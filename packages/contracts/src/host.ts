@@ -43,7 +43,7 @@ export interface HostBridge {
   listDir(root: string, relativePath: string): Promise<DirEntry[]>
   stat(root: string, relativePath: string): Promise<FileStat>
   createDir(root: string, relativePath: string): Promise<void>
-  httpFetch(url: string): Promise<string>
+  httpFetch(url: string, options?: { cookie?: string }): Promise<string>
   gitStatus(root: string): Promise<import('./git').GitStatus>
   gitStage(root: string, paths: string[]): Promise<import('./git').GitStatus>
   gitUnstage(root: string, paths: string[]): Promise<import('./git').GitStatus>

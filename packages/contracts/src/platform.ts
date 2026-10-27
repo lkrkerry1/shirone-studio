@@ -20,6 +20,11 @@ export interface ProblemMeta {
   tags?: string[]
 }
 
+/** Optional context for a fetch, e.g. a site login cookie for tag scraping. */
+export interface FetchOptions {
+  cookie?: string
+}
+
 export interface PlatformAdapter {
   id: string
   name: string
@@ -28,7 +33,7 @@ export interface PlatformAdapter {
   /** True when the pasted id or URL belongs to this platform. */
   matches?(input: string): boolean
   parseInput(input: string): ProblemRef | null
-  fetchProblem(host: HostBridge, ref: ProblemRef): Promise<ProblemMeta>
+  fetchProblem(host: HostBridge, ref: ProblemRef, options?: FetchOptions): Promise<ProblemMeta>
   suggestSlug(meta: ProblemMeta): string
   suggestTitle(meta: ProblemMeta): string
   suggestedTags(meta: ProblemMeta): string[]

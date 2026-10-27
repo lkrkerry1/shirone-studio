@@ -54,19 +54,37 @@ export function translateCodeforcesTags(tags: string[] | undefined): string[] {
   return [...translated]
 }
 
-/**
- * Luogu renders tags as list links; their JSON payloads differ across builds,
- * so try the quoted `tags` array first and the anchor list second. Numeric tag
- * ids are ignored (the names live elsewhere).
- */
-export function extractLuoguTags(html: string): string[] {
-  const quoted = /"tags"\s*:\s*\[([^\]]*)\]/.exec(html)
-  if (quoted?.[1]) {
-    const names = [...quoted[1].matchAll(/"([^"]+)"\s*/g)].map((match) => match[1]!)
-    if (names.length > 0) return [...new Set(names)]
+/** Numeric tag ids from a Luogu problem page (the lentille-context payload). */
+export function luoguTagIds(html: string): number[] {
+  const context = /<script id="lentille-context"[^>]*>([\s\S]*?)<\/script>/.exec(html)
+  if (context?.[1]) {
+    try {
+      const parsed = JSON.parse(context[1]) as {
+        data?: { problem?: { tags?: unknown } }
+      }
+      const tags = parsed.data?.problem?.tags
+      if (Array.isArray(tags)) {
+        return [...new Set(tags.filter((tag): tag is number => typeof tag === 'number'))]
+      }
+    } catch {
+      // Fall through to the loose match below.
+    }
   }
-  const anchors = [...html.matchAll(/\/problem\/list\?tag=[^"]*"[^>]*>([^<]{1,24})</g)].map((match) =>
-    match[1]!.trim(),
+  const loose = /"tags"\s*:\s*\[([\d,\s]*)\]/.exec(html)
+  if (!loose?.[1]) return []
+  return [...new Set(loose[1].split(',').map((part) => Number.parseInt(part, 10)).filter(Number.isFinite))]
+}
+
+/**
+ * A tag's display name from a filtered problem-list page, e.g.
+ * `<a href="/problem/list?tag=47">并查集</a>`.
+ */
+export function luoguTagName(html: string, id: number): string | null {
+  const pattern = new RegExp(
+    `<a[^>]+href="/problem/list\\?tag=${id}"[^>]*>([^<]{1,32})</a>`,
+    'i',
   )
-  return [...new Set(anchors.filter((name) => name.length > 0))]
+  const match = pattern.exec(html)
+  const name = match?.[1]?.trim()
+  return name ? name : null
 }
