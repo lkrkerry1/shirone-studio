@@ -63,13 +63,17 @@ pub async fn http_fetch(url: String) -> Result<String, String> {
         .send()
         .await
         .map_err(|error| format!("Network error: {error}"))?;
-    if !response.status().is_success() {
-        return Err(format!("HTTP {}", response.status()));
-    }
-    response
+    let status = response.status();
+    let body = response
         .text()
         .await
-        .map_err(|error| format!("Cannot read response: {error}"))
+        .map_err(|error| format!("Cannot read response: {error}"))?;
+    if !status.is_success() {
+        // Codeforces answers 400 with a JSON comment; keep it readable.
+        let detail: String = body.chars().take(200).collect();
+        return Err(format!("HTTP {status}: {detail}"));
+    }
+    Ok(body)
 }
 
 /// Run blocking work off the UI thread; git can take a moment on big trees.

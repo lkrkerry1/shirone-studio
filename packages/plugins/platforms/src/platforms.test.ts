@@ -55,4 +55,39 @@ describe('platform adapters', () => {
     expect(meta.displayTitle).toBe('Codeforces 2261E Example')
     expect(codeforces.suggestSlug(meta)).toBe('cf-2261e')
   })
+
+  it('recognises Codeforces contest URLs and fills name and tags', async () => {
+    const ref = codeforces.parseInput('https://codeforces.com/contest/2272')!
+    expect(ref.contestId).toBe('2272')
+    expect(ref.index).toBeUndefined()
+    expect(codeforces.parseInput('2272')?.contestId).toBe('2272')
+    expect(codeforces.supportsContest).toBe(true)
+
+    const meta = await codeforces.fetchProblem(
+      hostWith(
+        JSON.stringify({
+          result: { contest: { id: 2272, name: 'Codeforces Round 2272 (Div. 2)' } },
+        }),
+      ),
+      ref,
+    )
+    expect(meta.displayTitle).toBe('Codeforces Round 2272 (Div. 2)')
+    expect(meta.contestTitle).toBe('Codeforces Round 2272 (Div. 2)')
+    expect(meta.tags).toEqual(['Codeforces', 'Div. 2'])
+    expect(codeforces.suggestSlug(meta)).toBe('cf-2272')
+    expect(codeforces.suggestTitle(meta)).toBe('Codeforces Round 2272 (Div. 2)')
+  })
+
+  it('recognises AtCoder contest URLs', async () => {
+    const ref = atcoder.parseInput('https://atcoder.jp/contests/abc479')!
+    expect(ref.contestId).toBe('abc479')
+    expect(ref.index).toBeUndefined()
+    const meta = await atcoder.fetchProblem(
+      hostWith('<title>AtCoder Beginner Contest 479 - AtCoder</title>'),
+      ref,
+    )
+    expect(meta.displayTitle).toBe('AtCoder Beginner Contest 479')
+    expect(meta.tags).toEqual(['AtCoder', 'ABC'])
+    expect(atcoder.suggestSlug(meta)).toBe('at-abc-479')
+  })
 })

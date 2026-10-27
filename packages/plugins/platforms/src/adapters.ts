@@ -67,11 +67,28 @@ interface CodeforcesProblem {
   tags?: string[]
 }
 
+interface CodeforcesContestResponse {
+  result?: {
+    contest?: { id?: number; name?: string }
+    problems?: CodeforcesProblem[]
+  }
+}
+
+/** Tags a contest name implies, e.g. "Codeforces Round 2272 (Div. 2)". */
+function codeforcesContestTags(name: string): string[] {
+  const tags = ['Codeforces']
+  const division = /Div\.?\s*(\d)/i.exec(name)
+  if (division) tags.push(`Div. ${division[1]}`)
+  if (/educational/i.test(name)) tags.push('Educational Round')
+  if (/global round/i.test(name)) tags.push('Global Round')
+  return tags
+}
+
 const codeforces: PlatformAdapter = {
   id: 'codeforces',
   name: 'Codeforces',
   slugPrefix: 'cf-',
-  supportsContest: false,
+  supportsContest: true,
   parseInput(input) {
     const text = input.trim()
     const url = /codeforces\.com\/(?:contest|problemset\/problem)\/(\d+)\/(?:problem\/)?([A-Z]\d?)/i.exec(
@@ -80,16 +97,48 @@ const codeforces: PlatformAdapter = {
     const bare = /^(\d+)\s*([A-Z]\d?)$/i.exec(text)
     const contestId = url?.[1] ?? bare?.[1]
     const index = (url?.[2] ?? bare?.[2])?.toUpperCase()
-    if (!contestId || !index) return null
+    if (contestId && index) {
+      return {
+        platform: 'codeforces',
+        id: `${contestId}${index}`,
+        contestId,
+        index,
+        url: `https://codeforces.com/problemset/problem/${contestId}/${index}`,
+      }
+    }
+    // A contest URL, or a bare contest number: no problem index.
+    const contestUrl =
+      /codeforces\.com\/contest\/(\d+)(?:[/?#]|$)/i.exec(text) ??
+      /codeforces\.com\/problemset\/problem\/(\d+)(?:[/?#]|$)/i.exec(text)
+    const bareContest = /^(\d+)$/.exec(text)
+    const contestOnly = contestUrl?.[1] ?? bareContest?.[1]
+    if (!contestOnly) return null
     return {
       platform: 'codeforces',
-      id: `${contestId}${index}`,
-      contestId,
-      index,
-      url: `https://codeforces.com/problemset/problem/${contestId}/${index}`,
+      id: contestOnly,
+      contestId: contestOnly,
+      url: `https://codeforces.com/contest/${contestOnly}`,
     }
   },
   async fetchProblem(host: HostBridge, ref: ProblemRef): Promise<ProblemMeta> {
+    if (!ref.index) {
+      // Contest-level metadata: name (and the problems we will use later).
+      const body = await host.httpFetch(
+        `https://codeforces.com/api/contest.standings?contestId=${ref.contestId}`,
+      )
+      const parsed = JSON.parse(body) as CodeforcesContestResponse
+      const name = parsed.result?.contest?.name ?? `Codeforces ${ref.contestId}`
+      return {
+        platform: 'codeforces',
+        problemId: String(ref.contestId),
+        contestId: ref.contestId,
+        title: name,
+        displayTitle: name,
+        contestTitle: name,
+        url: ref.url,
+        tags: codeforcesContestTags(name),
+      }
+    }
     const body = await host.httpFetch('https://codeforces.com/api/problemset.problems')
     const parsed = JSON.parse(body) as { result?: { problems?: CodeforcesProblem[] } }
     const problem = parsed.result?.problems?.find(
@@ -109,7 +158,8 @@ const codeforces: PlatformAdapter = {
     }
   },
   suggestSlug(meta) {
-    return `cf-${meta.contestId ?? ''}${(meta.index ?? '').toLowerCase()}`
+    const index = (meta.index ?? '').toLowerCase()
+    return index ? `cf-${meta.contestId ?? ''}${index}` : `cf-${meta.contestId ?? ''}`
   },
   suggestTitle(meta) {
     return meta.displayTitle
@@ -123,24 +173,53 @@ const atcoder: PlatformAdapter = {
   id: 'atcoder',
   name: 'AtCoder',
   slugPrefix: 'at-',
-  supportsContest: false,
+  supportsContest: true,
   parseInput(input) {
     const text = input.trim()
     const url = /atcoder\.jp\/contests\/([^/]+)\/tasks\/([^/?#]+)/i.exec(text)
     const bare = /^([a-z0-9]+)_([a-z]\d?)$/i.exec(text)
     const contestId = url?.[1] ?? bare?.[1]
     const task = url?.[2] ?? bare?.[0]
-    if (!contestId || !task) return null
-    const index = (/[_-]([a-z]\d?)$/i.exec(task)?.[1] ?? '').toUpperCase()
+    if (contestId && task) {
+      const index = (/[_-]([a-z]\d?)$/i.exec(task)?.[1] ?? '').toUpperCase()
+      return {
+        platform: 'atcoder',
+        id: task,
+        contestId,
+        index,
+        url: `https://atcoder.jp/contests/${contestId}/tasks/${task}`,
+      }
+    }
+    // Contest URL: /contests/<id> without a task.
+    const contestUrl = /atcoder\.jp\/contests\/([^/?#]+)(?:[/?#]|$)/i.exec(text)
+    const contestOnly = contestUrl?.[1] ?? (/^[a-z]{2,}\d{2,}$/i.test(text) ? text : undefined)
+    if (!contestOnly) return null
     return {
       platform: 'atcoder',
-      id: task,
-      contestId,
-      index,
-      url: `https://atcoder.jp/contests/${contestId}/tasks/${task}`,
+      id: contestOnly,
+      contestId: contestOnly,
+      url: `https://atcoder.jp/contests/${contestOnly}`,
     }
   },
   async fetchProblem(host: HostBridge, ref: ProblemRef): Promise<ProblemMeta> {
+    if (!ref.index) {
+      const html = await host.httpFetch(ref.url)
+      const name = htmlTitle(html).replace(/\s*-\s*AtCoder\s*$/i, '') || ref.id
+      const tags = ['AtCoder']
+      if (/beginner/i.test(name)) tags.push('ABC')
+      if (/regular/i.test(name)) tags.push('ARC')
+      if (/grand/i.test(name)) tags.push('AGC')
+      return {
+        platform: 'atcoder',
+        problemId: String(ref.contestId),
+        contestId: ref.contestId,
+        title: name,
+        displayTitle: name,
+        contestTitle: name,
+        url: ref.url,
+        tags,
+      }
+    }
     const html = await host.httpFetch(ref.url)
     const raw = htmlTitle(html)
     const name = raw.replace(/^[A-Z]\d?\s*-\s*/, '') || ref.id
@@ -157,7 +236,10 @@ const atcoder: PlatformAdapter = {
     }
   },
   suggestSlug(meta) {
-    return `at-${contestSlug(meta.contestId ?? '')}-${(meta.index ?? '').toLowerCase()}`
+    const index = (meta.index ?? '').toLowerCase()
+    return index
+      ? `at-${contestSlug(meta.contestId ?? '')}-${index}`
+      : `at-${contestSlug(meta.contestId ?? '')}`
   },
   suggestTitle(meta) {
     return meta.displayTitle

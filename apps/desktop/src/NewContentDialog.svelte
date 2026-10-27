@@ -109,7 +109,9 @@
         platformName: adapter.name,
         problemId: meta.problemId,
       }
-      platformMessage = `已填入：${meta.displayTitle}`
+      platformMessage = meta.contestTitle
+        ? `已识别整赛：${meta.displayTitle}`
+        : `已填入：${meta.displayTitle}`
     } catch (cause) {
       platformMessage = cause instanceof Error ? cause.message : String(cause)
     } finally {
