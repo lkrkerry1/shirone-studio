@@ -89,6 +89,11 @@ class RuleWidget extends WidgetType {
     rule.className = 'lp-hr'
     return rule
   }
+
+  /** Let a click land in the document so the rule reveals its source. */
+  override ignoreEvent(): boolean {
+    return false
+  }
 }
 
 class TableWidget extends WidgetType {
@@ -249,6 +254,10 @@ function buildDecorations(state: EditorState, options: RichMarkdownOptions): Dec
         }
 
         if (name === 'HorizontalRule') {
+          // `****` or `---` typed while starting emphasis is a rule already;
+          // keep the source visible while the cursor is on it so it stays
+          // editable instead of turning into a line that swallows the caret.
+          if (selectionTouches(state, node.from, node.to)) return
           add(node.from, node.to, Decoration.replace({ widget: new RuleWidget() }))
           return
         }

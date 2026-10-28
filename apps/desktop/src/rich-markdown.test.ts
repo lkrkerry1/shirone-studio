@@ -40,6 +40,28 @@ describe('rich markdown math spans', () => {
   })
 })
 
+describe('rich markdown horizontal rules', () => {
+  const withCursor = (doc: string, cursor: number) =>
+    EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(cursor),
+      extensions: [markdown({ base: markdownLanguage })],
+    })
+
+  it('keeps the source visible while the cursor is on the rule', () => {
+    // `****` is a thematic break, so typing bold markers must not swallow the caret.
+    const doc = '****'
+    const set = richMarkdownDecorations(withCursor(doc, doc.length))
+    expect(widgetCount(set, doc.length)).toBe(0)
+  })
+
+  it('renders the rule once the cursor leaves it', () => {
+    const doc = 'text\n\n****\n'
+    const set = richMarkdownDecorations(withCursor(doc, 0))
+    expect(widgetCount(set, doc.length)).toBe(1)
+  })
+})
+
 describe('rich markdown tables', () => {
   const state = () =>
     EditorState.create({
