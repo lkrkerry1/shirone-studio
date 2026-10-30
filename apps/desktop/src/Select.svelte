@@ -22,12 +22,33 @@
 
   let open = $state(false)
   let host: HTMLDivElement
+  let trigger: HTMLButtonElement
+  /** Fixed coordinates: a menu inside a scrolling panel would be clipped. */
+  let position = $state({ left: 0, top: 0, width: 0 })
 
   const selected = $derived(options.find((option) => option.value === value) ?? options[0])
+
+  function toggle(): void {
+    if (open) {
+      open = false
+      return
+    }
+    const rect = trigger.getBoundingClientRect()
+    const estimated = Math.min(options.length * 30 + 8, 260)
+    const below = window.innerHeight - rect.bottom
+    const top = below >= estimated + 8 ? rect.bottom + 4 : Math.max(8, rect.top - estimated - 4)
+    position = { left: rect.left, top, width: rect.width }
+    open = true
+  }
 
   function choose(next: string): void {
     open = false
     if (next !== value) onchange(next)
+  }
+
+  /** A fixed menu would drift away when the panel or page scrolls. */
+  function onScroll(): void {
+    if (open) open = false
   }
 
   function onWindowEvent(event: Event): void {
@@ -42,10 +63,16 @@
   }
 </script>
 
-<svelte:window onclick={onWindowEvent} onkeydown={onWindowEvent} />
+<svelte:window
+  onclick={onWindowEvent}
+  onkeydown={onWindowEvent}
+  onscroll={onScroll}
+  onresize={onScroll}
+/>
 
 <div class="select" bind:this={host}>
   <button
+    bind:this={trigger}
     {id}
     type="button"
     class="trigger"
@@ -53,14 +80,19 @@
     aria-label={ariaLabel}
     aria-haspopup="listbox"
     aria-expanded={open}
-    onclick={() => (open = !open)}
+    onclick={toggle}
   >
     <span class="label">{selected?.label ?? ''}</span>
     <span class="caret" aria-hidden="true">▾</span>
   </button>
 
   {#if open}
-    <ul class="menu" role="listbox" aria-label={ariaLabel}>
+    <ul
+      class="menu"
+      role="listbox"
+      aria-label={ariaLabel}
+      style="left: {position.left}px; top: {position.top}px; width: {position.width}px"
+    >
       {#each options as option (option.value)}
         <li role="presentation">
           <button
@@ -121,11 +153,8 @@
   }
 
   .menu {
-    position: absolute;
-    z-index: 30;
-    top: calc(100% + 4px);
-    left: 0;
-    right: 0;
+    position: fixed;
+    z-index: 60;
     max-height: 260px;
     margin: 0;
     padding: 4px;
