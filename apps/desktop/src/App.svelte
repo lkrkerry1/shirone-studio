@@ -55,6 +55,15 @@
   let richEditing = $state(loadRichEditing())
   let originalBody = $state('')
   let frontmatterDirty = $state(false)
+  /** Raw frontmatter block (`---\n…\n---`) as read from disk. */
+  let rawFrontmatter = $state('')
+  let originalRaw = $state('')
+  /** Whole-file text used by source mode; kept separate so typing never fights the split. */
+  let sourceText = $state('')
+
+  function composeSource(raw: string, text: string): string {
+    return raw ? `${raw}\n${text}` : text
+  }
   let updatedAuto = $state(true)
   let autosave = $state(loadAutosave())
   let saving = $state(false)
@@ -201,6 +210,9 @@
       current = doc
       body = doc.body ?? ''
       originalBody = body
+      rawFrontmatter = doc.rawFrontmatter ?? ''
+      originalRaw = rawFrontmatter
+      sourceText = composeSource(rawFrontmatter, body)
       dirty = false
       frontmatterDirty = false
       updatedAuto = true
@@ -266,7 +278,7 @@
 
     if (next !== body) {
       body = next
-      dirty = next !== originalBody
+      dirty = next !== originalBody || rawFrontmatter !== originalRaw
     }
   }
 
@@ -278,7 +290,10 @@
     try {
       let frontmatter = current.frontmatter ?? {}
       const bodyChanged = body !== originalBody
+      // A raw edit in source mode is authoritative: never rewrite frontmatter.
+      const rawChanged = rawFrontmatter !== originalRaw
       if (
+        !rawChanged &&
         current.type === 'posts' &&
         bodyChanged &&
         updatedAuto &&
@@ -294,23 +309,22 @@
         }
       }
       const path = current.path
-      const result = await type.save(context, {
+      await type.save(context, {
         ...current,
         body,
         frontmatter,
-        frontmatterDirty,
-        rawFrontmatter: current.rawFrontmatter,
+        frontmatterDirty: rawChanged ? false : frontmatterDirty,
+        rawFrontmatter: rawChanged ? rawFrontmatter : current.rawFrontmatter,
         force: options.force ?? false,
       })
-      current = {
-        ...current,
-        body,
-        frontmatter,
-        frontmatterDirty: false,
-        hash: result.hash,
-        force: false,
-      }
+      // Read the file back: it is the only source of truth for the raw block.
+      const fresh = await type.read(context, current.id)
+      current = { ...fresh }
+      body = fresh.body ?? ''
+      rawFrontmatter = fresh.rawFrontmatter ?? ''
       originalBody = body
+      originalRaw = rawFrontmatter
+      sourceText = composeSource(rawFrontmatter, body)
       dirty = false
       frontmatterDirty = false
       conflict = false
@@ -489,7 +503,26 @@
 
   function toggleRichEditing() {
     richEditing = !richEditing
+    if (!richEditing) sourceText = composeSource(rawFrontmatter, body)
     saveRichEditing(richEditing)
+  }
+
+  /**
+   * One change handler for both modes: rich mode edits the body, source mode
+   * edits the whole file and splits it back into frontmatter and body.
+   */
+  function updateFromEditor(next: string) {
+    if (richEditing || !context) {
+      body = next
+      dirty = next !== originalBody || rawFrontmatter !== originalRaw
+      return
+    }
+    sourceText = next
+    const split = context.frontmatter.split(next)
+    rawFrontmatter = split.raw
+    body = split.body
+    if (current) current = { ...current, frontmatter: split.data }
+    dirty = body !== originalBody || rawFrontmatter !== originalRaw
   }
 
   function toggleInfoPanel() {
@@ -501,6 +534,9 @@
     saveProjectRoot(projectRoot.trim())
     current = null
     body = ''
+    rawFrontmatter = ''
+    originalRaw = ''
+    sourceText = ''
     dirty = false
     conflict = false
     discardOnClose = false
@@ -626,12 +662,9 @@
           <div class="editor-column">
             <div class="editor">
               <CodeEditor
-                value={body}
+                value={richEditing ? body : sourceText}
                 docId={current.path}
-                onChange={(next) => {
-                  body = next
-                  dirty = next !== originalBody
-                }}
+                onChange={updateFromEditor}
                 lintSource={(text) => context?.lint.check(text, current?.type ?? 'posts', { category: lintCategory }) ?? []}
                 extensions={editorExtensions}
                 rich={richEditing}
