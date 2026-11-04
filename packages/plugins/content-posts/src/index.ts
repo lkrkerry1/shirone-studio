@@ -51,7 +51,7 @@ export const postFields: FieldDefinition[] = [
     group: '内容关联',
     options: ['题解', '笔记', '随笔'],
   },
-  { key: 'series', label: '系列 slug', type: 'string', group: '内容关联' },
+  { key: 'series', label: '系列', type: 'select', optionsSource: 'series', group: '内容关联' },
   { key: 'seriesOrder', label: '系列序号', type: 'number', group: '内容关联' },
   { key: 'pinned', label: '置顶', type: 'boolean', group: '状态' },
   { key: 'comment', label: '开启评论', type: 'boolean', group: '状态' },
@@ -206,7 +206,7 @@ export function createPostType(): ContentTypeDefinition {
           { key: 'title', label: '标题', type: 'string', required: true },
           { key: 'slug', label: 'slug', type: 'string', required: true },
           { key: 'description', label: '摘要', type: 'text' },
-          { key: 'series', label: '系列 slug', type: 'string' },
+          { key: 'series', label: '系列', type: 'select', optionsSource: 'series' },
           { key: 'seriesOrder', label: '系列序号', type: 'number' },
         ],
         async create(ctx, input) {

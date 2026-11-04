@@ -6,6 +6,7 @@
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
   import type { StudioApp } from './boot'
+  import { normalizeOptions, resolveFieldOptions, type ResolvedOption } from './field-options'
   import Select from './Select.svelte'
 
   let { context, types, templates, platforms, detectPlatform, onclose, oncreated }: {
@@ -63,6 +64,8 @@
   let platformMessage = $state('')
 
   const selected = $derived(entries.find((entry) => entry.id === entryId))
+  /** Options loaded from a content type, keyed by field. */
+  let resolved = $state<Record<string, ResolvedOption[]>>({})
 
   /** Values a form starts with, from the fields' `default` factories. */
   function initialValues(entry: Entry | undefined): Record<string, unknown> {
@@ -88,6 +91,26 @@
     const entry = entries.find((candidate) => candidate.id === entryId)
     if (!entry) return
     values = initialValues(entry)
+  })
+
+  // Fields such as 系列 load their choices from existing content.
+  $effect(() => {
+    const entry = entries.find((candidate) => candidate.id === entryId)
+    if (!entry) return
+    const fields = entry.fields.filter((field) => field.optionsSource)
+    if (fields.length === 0) {
+      resolved = {}
+      return
+    }
+    let cancelled = false
+    void Promise.all(
+      fields.map(async (field) => [field.key, await resolveFieldOptions(field, context)] as const),
+    ).then((pairs) => {
+      if (!cancelled) resolved = Object.fromEntries(pairs)
+    })
+    return () => {
+      cancelled = true
+    }
   })
 
   $effect(() => {
@@ -256,7 +279,7 @@
             ariaLabel={field.label}
             options={[
               { value: '', label: '—' },
-              ...(field.options ?? []).map((option) => ({ value: option, label: option })),
+              ...(resolved[field.key] ?? normalizeOptions(field.options)),
             ]}
             onchange={(next) => update(field.key, next)}
           />

@@ -12,7 +12,7 @@ const commonFields: FieldDefinition[] = [
 ]
 
 const seriesFields: FieldDefinition[] = [
-  { key: 'series', label: '系列 slug', type: 'string' },
+  { key: 'series', label: '系列', type: 'select', optionsSource: 'series' },
   { key: 'seriesOrder', label: '系列序号', type: 'number' },
 ]
 

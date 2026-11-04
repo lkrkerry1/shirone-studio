@@ -731,6 +731,7 @@
                   fields={currentType.fields ?? []}
                   value={current.frontmatter ?? {}}
                   onChange={updateFrontmatter}
+                  {context}
                 />
               {:else}
                 <PreviewPane html={previewHtml} resolveAsset={resolvePreviewAsset} />

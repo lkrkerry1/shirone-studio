@@ -1,12 +1,36 @@
 <script lang="ts">
   import type { FieldDefinition } from '@shirone-studio/contracts'
+  import { normalizeOptions, resolveFieldOptions, type ResolvedOption } from './field-options'
   import Select from './Select.svelte'
 
-  let { fields, value, onChange }: {
+  let { fields, value, onChange, context }: {
     fields: FieldDefinition[]
     value: Record<string, unknown>
     onChange: (next: Record<string, unknown>) => void
+    context?: unknown
   } = $props()
+
+  /** Options loaded from a content type, keyed by field. */
+  let resolved = $state<Record<string, ResolvedOption[]>>({})
+
+  $effect(() => {
+    const sourced = fields.filter((field) => field.optionsSource)
+    if (sourced.length === 0) {
+      resolved = {}
+      return
+    }
+    let cancelled = false
+    void Promise.all(
+      sourced.map(
+        async (field) => [field.key, await resolveFieldOptions(field, context)] as const,
+      ),
+    ).then((pairs) => {
+      if (!cancelled) resolved = Object.fromEntries(pairs)
+    })
+    return () => {
+      cancelled = true
+    }
+  })
 
   const groups = $derived([...new Set(fields.map((field) => field.group ?? '其他'))])
   const primaryGroups = new Set(['基础', '内容关联', '状态'])
@@ -111,7 +135,7 @@
         value={stringValue(field.key)}
         options={[
           { value: '', label: '—' },
-          ...(field.options ?? []).map((option) => ({ value: option, label: option })),
+          ...(resolved[field.key] ?? normalizeOptions(field.options)),
         ]}
         onchange={(next) => update(field.key, next)}
       />

@@ -7,6 +7,7 @@ import type {
   ContentDraft,
   ContentSummary,
   ContentTypeDefinition,
+  FieldOption,
   FieldDefinition,
   ProjectLayout,
 } from '@shirone-studio/contracts'
@@ -15,10 +16,25 @@ import type { SplitFrontmatter } from '@shirone-studio/plugin-frontmatter'
 
 export const MOMENT_ORDER = ['published', 'pinned', 'mood', 'tags', 'location', 'images']
 
+/** Iconify ids the blog theme renders with <Icon icon={mood} />. */
+export const MOMENT_MOODS: FieldOption[] = [
+  { value: 'material-symbols:sentiment-very-satisfied', label: '😄 超开心' },
+  { value: 'material-symbols:sentiment-satisfied', label: '😊 开心' },
+  { value: 'material-symbols:sentiment-neutral', label: '😐 一般' },
+  { value: 'material-symbols:sentiment-dissatisfied', label: '😕 有点糟' },
+  { value: 'material-symbols:sentiment-very-dissatisfied', label: '😞 难过' },
+  { value: 'material-symbols:mood-heart', label: '💗 心动' },
+  { value: 'material-symbols:local-fire-department', label: '🔥 燃' },
+  { value: 'material-symbols:bolt', label: '⚡ 来劲' },
+  { value: 'material-symbols:coffee', label: '☕ 咖啡' },
+  { value: 'material-symbols:bedtime', label: '🌙 困了' },
+  { value: 'material-symbols:celebration', label: '🎉 庆祝' },
+]
+
 export const momentFields: FieldDefinition[] = [
   { key: 'published', label: '发布时间', type: 'datetime', group: '基础', required: true },
   { key: 'pinned', label: '置顶', type: 'boolean', group: '基础' },
-  { key: 'mood', label: '心情图标', type: 'icon', group: '基础', placeholder: 'material-symbols:...' },
+  { key: 'mood', label: '心情图标', type: 'select', group: '基础', options: MOMENT_MOODS },
   { key: 'tags', label: '标签', type: 'tags', group: '基础' },
   { key: 'location', label: '位置', type: 'string', group: '基础' },
   {
@@ -184,7 +200,7 @@ export const momentsType: ContentTypeDefinition = {
           default: () => timeSlug(),
           placeholder: '默认当前时间 HHMM',
         },
-        { key: 'mood', label: '心情图标', type: 'string' },
+        { key: 'mood', label: '心情图标', type: 'select', options: MOMENT_MOODS },
         { key: 'location', label: '位置', type: 'string' },
         { key: 'tags', label: '标签', type: 'tags' },
       ],

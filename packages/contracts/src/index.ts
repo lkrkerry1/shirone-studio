@@ -1,5 +1,7 @@
 export type ContentKind = 'markdown-frontmatter' | 'markdown-plain' | 'data-ts'
 
+export type FieldOption = string | { value: string; label: string }
+
 export interface FieldDefinition {
   key: string
   label: string
@@ -20,7 +22,9 @@ export interface FieldDefinition {
   required?: boolean
   placeholder?: string
   description?: string
-  options?: string[]
+  options?: FieldOption[]
+  /** Fill the dropdown from another content type's list, e.g. 'series'. */
+  optionsSource?: string
   itemFields?: FieldDefinition[]
   /**
    * Value the new-content form starts with. Called when the form opens, so a
