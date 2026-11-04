@@ -30,7 +30,6 @@
   import ContentInfoPanel from './ContentInfoPanel.svelte'
   import NewContentDialog from './NewContentDialog.svelte'
   import PreviewPane from './PreviewPane.svelte'
-  import PluginManagerDialog from './PluginManagerDialog.svelte'
   import GitDialog from './GitDialog.svelte'
   import SettingsDialog from './SettingsDialog.svelte'
 
@@ -44,7 +43,6 @@
   let templates = $state<ContentTemplate[]>([])
   let platforms = $state<PlatformAdapter[]>([])
   let showNew = $state(false)
-  let showPlugins = $state(false)
   let showGit = $state(false)
   let showSettings = $state(false)
   let current = $state<ContentDocument | null>(null)
@@ -588,7 +586,6 @@
         Git
       </button>
       <button class="secondary" disabled={!context} onclick={() => (showSettings = true)}>设置</button>
-      <button class="secondary" disabled={!plugins} onclick={() => (showPlugins = true)}>插件</button>
       <button class="primary" disabled={!current || !dirty} onclick={() => void save()}>保存</button>
     </div>
   </header>
@@ -750,13 +747,10 @@
     >
   </footer>
 
-  {#if showPlugins && plugins}
-    <PluginManagerDialog plugins={plugins} onclose={() => (showPlugins = false)} />
-  {/if}
-
-  {#if showSettings && context}
+  {#if showSettings && context && plugins}
     <SettingsDialog
       {context}
+      {plugins}
       {projectRoot}
       {autosave}
       onprojectroot={(value) => (projectRoot = value)}

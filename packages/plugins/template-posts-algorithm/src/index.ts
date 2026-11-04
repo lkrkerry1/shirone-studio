@@ -167,7 +167,7 @@ export const inject = ['templates']
 
 export function apply(ctx: Context): void {
   for (const template of [singleProblem, contest, board, essay]) {
-    ctx.templates.register(template)
+    ctx.effect(() => ctx.templates.register(template))
   }
 }
 

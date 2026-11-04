@@ -171,7 +171,7 @@ export const name = 'content-series'
 export const inject = ['contentTypes', 'host', 'frontmatter']
 
 export function apply(ctx: Context): void {
-  ctx.contentTypes.register(seriesType)
+  ctx.effect(() => ctx.contentTypes.register(seriesType))
 }
 
 export default definePlugin({ name, inject, apply })

@@ -8,9 +8,9 @@ export const inject = ['platforms', 'settings']
 
 export function apply(ctx: Context): void {
   for (const adapter of adapters) {
-    ctx.platforms.register(adapter)
+    ctx.effect(() => ctx.platforms.register(adapter))
   }
-  ctx.settings.register({
+  ctx.effect(() => ctx.settings.register({
     plugin: 'platforms',
     title: '平台抓取',
     fields: [
@@ -24,7 +24,7 @@ export function apply(ctx: Context): void {
           '用于抓取洛谷题目标签。登录洛谷后从浏览器复制 Cookie，仅保存在本机，只会发往 luogu.com.cn。',
       },
     ],
-  })
+  }))
 }
 
 export default definePlugin({ name, inject, apply })

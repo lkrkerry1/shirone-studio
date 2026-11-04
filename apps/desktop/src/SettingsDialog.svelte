@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import type { PluginRecord } from '@shirone-studio/kernel'
   import type { PluginSettingField } from '@shirone-studio/contracts'
   import type { StudioApp } from './boot'
   import Select from './Select.svelte'
 
   let {
     context,
+    plugins,
     projectRoot,
     autosave,
     onprojectroot,
@@ -14,6 +17,10 @@
     onclose,
   }: {
     context: StudioApp['context']
+    plugins: {
+      list(): PluginRecord[]
+      setEnabled(id: string, enabled: boolean): Promise<void>
+    }
     projectRoot: string
     autosave: boolean
     onprojectroot: (value: string) => void
@@ -23,7 +30,23 @@
     onclose: () => void
   } = $props()
 
-  function initialValues(): Record<string, Record<string, unknown>> {
+  // The shell calls these services directly; disabling them would break the UI,
+  // so the settings dialog keeps them on. Only data-only plugins can be toggled.
+  const locked = new Set([
+    '@shirone-studio/plugin-host',
+    '@shirone-studio/plugin-frontmatter',
+    '@shirone-studio/plugin-content-posts',
+    '@shirone-studio/plugin-content-series',
+    '@shirone-studio/plugin-content-moments',
+    '@shirone-studio/plugin-content-about',
+    '@shirone-studio/plugin-platforms',
+    '@shirone-studio/plugin-lint',
+    '@shirone-studio/plugin-preview',
+    '@shirone-studio/plugin-git',
+    '@shirone-studio/plugin-appearance',
+  ])
+
+  function initials(): Record<string, Record<string, unknown>> {
     return Object.fromEntries(
       context.settings.list().map((contribution) => [
         contribution.plugin,
@@ -38,7 +61,27 @@
   }
 
   const contributions = $derived(context.settings.list())
-  let values = $state<Record<string, Record<string, unknown>>>(initialValues())
+  let records = $state<PluginRecord[]>([])
+  let values = $state<Record<string, Record<string, unknown>>>(initials())
+  let pluginError = $state('')
+
+  onMount(() => {
+    records = plugins.list()
+  })
+
+  /** The settings contribution a plugin entry owns, matched by the short name. */
+  function settingsFor(record: PluginRecord) {
+    return contributions.find(
+      (contribution) =>
+        record.name === contribution.plugin ||
+        record.name.endsWith(`-${contribution.plugin}`) ||
+        record.name.endsWith(`/${contribution.plugin}`),
+    )
+  }
+
+  function shortName(name: string): string {
+    return name.replace('@shirone-studio/plugin-', '')
+  }
 
   function write(plugin: string, field: PluginSettingField, value: unknown): void {
     values[plugin] = { ...values[plugin], [field.key]: value }
@@ -50,7 +93,68 @@
     const value = values[plugin]?.[key]
     return value === undefined || value === null ? '' : String(value)
   }
+
+  async function toggle(record: PluginRecord): Promise<void> {
+    if (locked.has(record.name)) return
+    try {
+      pluginError = ''
+      // `disabled` is the current state; enable() takes the *next* enabled flag.
+      await plugins.setEnabled(record.id, record.disabled)
+      records = plugins.list()
+    } catch (cause) {
+      pluginError = cause instanceof Error ? cause.message : String(cause)
+    }
+  }
 </script>
+
+{#snippet settingField(plugin: string, field: PluginSettingField)}
+  {#if field.type === 'boolean'}
+    <label class="field checkbox">
+      <input
+        type="checkbox"
+        checked={values[plugin]?.[field.key] === true}
+        onchange={(event) => write(plugin, field, event.currentTarget.checked)}
+      />
+      <span class="label">{field.label}</span>
+      {#if field.description}<span class="hint">{field.description}</span>{/if}
+    </label>
+  {:else if field.type === 'select'}
+    <label class="field">
+      <span class="label">{field.label}</span>
+      <Select
+        value={String(values[plugin]?.[field.key] ?? '')}
+        ariaLabel={field.label}
+        options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+        onchange={(next) => write(plugin, field, next)}
+      />
+      {#if field.description}<span class="hint">{field.description}</span>{/if}
+    </label>
+  {:else if field.type === 'number'}
+    <label class="field">
+      <span class="label">{field.label}</span>
+      <input
+        type="number"
+        value={numberValue(plugin, field.key)}
+        oninput={(event) => {
+          const raw = event.currentTarget.value
+          write(plugin, field, raw === '' ? field.default : Number(raw))
+        }}
+      />
+      {#if field.description}<span class="hint">{field.description}</span>{/if}
+    </label>
+  {:else}
+    <label class="field">
+      <span class="label">{field.label}</span>
+      <input
+        value={String(values[plugin]?.[field.key] ?? '')}
+        placeholder={field.placeholder}
+        spellcheck="false"
+        oninput={(event) => write(plugin, field, event.currentTarget.value)}
+      />
+      {#if field.description}<span class="hint">{field.description}</span>{/if}
+    </label>
+  {/if}
+{/snippet}
 
 <div
   class="overlay"
@@ -90,59 +194,39 @@
       </label>
     </section>
 
-    {#each contributions as contribution (contribution.plugin)}
-      <section class="group">
-        <h3>{contribution.title}</h3>
-        {#each contribution.fields as field (field.key)}
-          {#if field.type === 'boolean'}
-            <label class="field checkbox">
+    <section class="group">
+      <h3>插件</h3>
+      {#if pluginError}<p class="error">{pluginError}</p>{/if}
+      {#each records as record (record.id)}
+        {@const contribution = settingsFor(record)}
+        <div class="plugin">
+          <div class="plugin-head">
+            <div class="plugin-meta">
+              <span class="plugin-name">{shortName(record.name)}</span>
+              <span class="hint">
+                {record.group} · {record.state}{record.error ? ` · ${record.error}` : ''}
+              </span>
+            </div>
+            <label class="switch">
               <input
                 type="checkbox"
-                checked={values[contribution.plugin]?.[field.key] === true}
-                onchange={(event) => write(contribution.plugin, field, event.currentTarget.checked)}
+                checked={!record.disabled}
+                disabled={locked.has(record.name)}
+                onchange={() => void toggle(record)}
               />
-              <span class="label">{field.label}</span>
-              {#if field.description}<span class="hint">{field.description}</span>{/if}
+              <span>{record.disabled ? '已停用' : '启用'}</span>
             </label>
-          {:else if field.type === 'select'}
-            <label class="field">
-              <span class="label">{field.label}</span>
-              <Select
-                value={String(values[contribution.plugin]?.[field.key] ?? '')}
-                ariaLabel={field.label}
-                options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
-                onchange={(next) => write(contribution.plugin, field, next)}
-              />
-              {#if field.description}<span class="hint">{field.description}</span>{/if}
-            </label>
-          {:else if field.type === 'number'}
-            <label class="field">
-              <span class="label">{field.label}</span>
-              <input
-                type="number"
-                value={numberValue(contribution.plugin, field.key)}
-                oninput={(event) => {
-                  const raw = event.currentTarget.value
-                  write(contribution.plugin, field, raw === '' ? field.default : Number(raw))
-                }}
-              />
-              {#if field.description}<span class="hint">{field.description}</span>{/if}
-            </label>
-          {:else}
-            <label class="field">
-              <span class="label">{field.label}</span>
-              <input
-                value={String(values[contribution.plugin]?.[field.key] ?? '')}
-                placeholder={field.placeholder}
-                spellcheck="false"
-                oninput={(event) => write(contribution.plugin, field, event.currentTarget.value)}
-              />
-              {#if field.description}<span class="hint">{field.description}</span>{/if}
-            </label>
+          </div>
+          {#if contribution}
+            <div class="plugin-settings">
+              {#each contribution.fields as field (field.key)}
+                {@render settingField(contribution.plugin, field)}
+              {/each}
+            </div>
           {/if}
-        {/each}
-      </section>
-    {/each}
+        </div>
+      {/each}
+    </section>
 
     <p class="hint footer">设置保存在本机，随项目一起生效。</p>
   </div>
@@ -163,7 +247,7 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    width: min(560px, 100%);
+    width: min(600px, 100%);
     max-height: 88vh;
     padding: 16px;
     overflow: auto;
@@ -239,6 +323,12 @@
     font-size: 11px;
   }
 
+  .error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 12px;
+  }
+
   .row {
     display: flex;
     gap: 6px;
@@ -268,6 +358,57 @@
     font: inherit;
     font-size: 12px;
     cursor: pointer;
+  }
+
+  .plugin {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .plugin-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .plugin-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .plugin-name {
+    color: var(--text);
+    font-family: var(--editor-font);
+    font-size: 12px;
+  }
+
+  .switch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .switch input[type='checkbox'] {
+    margin: 0;
+  }
+
+  .plugin-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
   }
 
   .footer {

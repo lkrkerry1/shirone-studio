@@ -236,7 +236,7 @@ export const name = 'content-posts'
 export const inject = ['contentTypes', 'host', 'frontmatter']
 
 export function apply(ctx: Context): void {
-  ctx.contentTypes.register(postsType)
+  ctx.effect(() => ctx.contentTypes.register(postsType))
 }
 
 export default definePlugin({ name, inject, apply })

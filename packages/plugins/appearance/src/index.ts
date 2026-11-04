@@ -420,8 +420,8 @@ export const name = 'appearance'
 export const inject = ['appearance', 'settings']
 
 export function apply(ctx: Context): void {
-  ctx.appearance.register(studioAppearance)
-  ctx.settings.register({
+  ctx.effect(() => ctx.appearance.register(studioAppearance))
+  ctx.effect(() => ctx.settings.register({
     plugin: 'appearance',
     title: '外观',
     fields: [
@@ -433,7 +433,7 @@ export function apply(ctx: Context): void {
         description: '编辑器正文的像素字号，默认 15。',
       },
     ],
-  })
+  }))
 }
 
 export default definePlugin({ name, inject, apply })

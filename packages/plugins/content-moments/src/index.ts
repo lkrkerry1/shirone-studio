@@ -211,7 +211,7 @@ export const name = 'content-moments'
 export const inject = ['contentTypes', 'host', 'frontmatter']
 
 export function apply(ctx: Context): void {
-  ctx.contentTypes.register(momentsType)
+  ctx.effect(() => ctx.contentTypes.register(momentsType))
 }
 
 export default definePlugin({ name, inject, apply })

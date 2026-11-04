@@ -77,7 +77,7 @@ export const name = 'content-about'
 export const inject = ['contentTypes', 'host']
 
 export function apply(ctx: Context): void {
-  ctx.contentTypes.register(aboutType)
+  ctx.effect(() => ctx.contentTypes.register(aboutType))
 }
 
 export default definePlugin({ name, inject, apply })
