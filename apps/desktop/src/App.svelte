@@ -17,6 +17,7 @@
   import {
     loadAutosave,
     loadInfoPanel,
+    loadLuoguCookie,
     loadProjectRoot,
     loadRichEditing,
     saveAutosave,
@@ -31,6 +32,7 @@
   import PreviewPane from './PreviewPane.svelte'
   import PluginManagerDialog from './PluginManagerDialog.svelte'
   import GitDialog from './GitDialog.svelte'
+  import SettingsDialog from './SettingsDialog.svelte'
 
   let projectRoot = $state(loadProjectRoot())
   let context = $state<StudioApp['context'] | null>(null)
@@ -44,6 +46,7 @@
   let showNew = $state(false)
   let showPlugins = $state(false)
   let showGit = $state(false)
+  let showSettings = $state(false)
   let current = $state<ContentDocument | null>(null)
   let body = $state('')
   let dirty = $state(false)
@@ -150,6 +153,11 @@
       // they registered before the first window gets painted with content.
       applyAppearance(app.context.appearance.list())
       editorExtensions = app.context.appearance.editorExtensions() as Extension[]
+      const legacyCookie = loadLuoguCookie()
+      if (legacyCookie && !app.context.settings.read('platforms', 'luoguCookie')) {
+        app.context.settings.write('platforms', 'luoguCookie', legacyCookie)
+      }
+      applySettings()
       layout = await detectLayout(app.context, projectRoot)
       types = app.context.contentTypes.list()
       templates = app.context.templates.list()
@@ -350,6 +358,17 @@
       }
     } finally {
       saving = false
+    }
+  }
+
+  /** Reflect stored plugin settings in the running UI (editor font size …). */
+  function applySettings() {
+    if (!context) return
+    const size = Number(context.settings.read('appearance', 'editorFontSize'))
+    if (Number.isFinite(size) && size > 6) {
+      document.documentElement.style.setProperty('--editor-font-size', `${size}px`)
+    } else {
+      document.documentElement.style.removeProperty('--editor-font-size')
     }
   }
 
@@ -568,6 +587,7 @@
       >
         Git
       </button>
+      <button class="secondary" disabled={!context} onclick={() => (showSettings = true)}>设置</button>
       <button class="secondary" disabled={!plugins} onclick={() => (showPlugins = true)}>插件</button>
       <button class="primary" disabled={!current || !dirty} onclick={() => void save()}>保存</button>
     </div>
@@ -732,6 +752,22 @@
 
   {#if showPlugins && plugins}
     <PluginManagerDialog plugins={plugins} onclose={() => (showPlugins = false)} />
+  {/if}
+
+  {#if showSettings && context}
+    <SettingsDialog
+      {context}
+      {projectRoot}
+      {autosave}
+      onprojectroot={(value) => (projectRoot = value)}
+      onautosave={(value) => {
+        autosave = value
+        saveAutosave(value)
+      }}
+      onreload={reloadRoot}
+      onsaved={applySettings}
+      onclose={() => (showSettings = false)}
+    />
   {/if}
 
   {#if showGit && context && layout}

@@ -6,7 +6,6 @@
   } from '@shirone-studio/contracts'
   import type { ContentTemplate } from '@shirone-studio/runtime'
   import type { StudioApp } from './boot'
-  import { loadLuoguCookie, saveLuoguCookie } from './settings'
   import Select from './Select.svelte'
 
   let { context, types, templates, platforms, detectPlatform, onclose, oncreated }: {
@@ -62,7 +61,6 @@
   let platformInput = $state('')
   let platformBusy = $state(false)
   let platformMessage = $state('')
-  let luoguCookie = $state(loadLuoguCookie())
 
   const selected = $derived(entries.find((entry) => entry.id === entryId))
 
@@ -110,10 +108,14 @@
     try {
       platformBusy = true
       platformMessage = '获取中…'
+      const cookie =
+        adapter.id === 'luogu'
+          ? String(context.settings.read('platforms', 'luoguCookie') ?? '')
+          : ''
       const meta = await adapter.fetchProblem(
         context.host,
         ref,
-        adapter.id === 'luogu' ? { cookie: luoguCookie } : undefined,
+        adapter.id === 'luogu' && cookie ? { cookie } : undefined,
       )
       values = {
         ...values,
@@ -230,18 +232,7 @@
         </button>
       </div>
       {#if platformId === 'luogu'}
-        <input
-          class="cookie"
-          value={luoguCookie}
-          oninput={(event) => {
-            luoguCookie = event.currentTarget.value
-            saveLuoguCookie(luoguCookie)
-          }}
-          placeholder="洛谷 Cookie（可选，用于抓取标签；只保存在本机）"
-          aria-label="洛谷 Cookie"
-          spellcheck="false"
-        />
-        <p class="hint">填入 <code>_uid=…; __client_id=…</code> 后，拉取题目时会把标签一起带出来。</p>
+        <p class="hint">洛谷 Cookie 在「设置 → 平台抓取」里配置，用于抓取题目标签。</p>
       {/if}
       {#if platformMessage}<p class="hint">{platformMessage}</p>{/if}
     {/if}
@@ -368,12 +359,6 @@
     margin: 0 0 10px;
     color: var(--muted);
     font-size: 12px;
-  }
-
-  .cookie {
-    width: 100%;
-    margin-bottom: 6px;
-    box-sizing: border-box;
   }
 
   .platform-row {

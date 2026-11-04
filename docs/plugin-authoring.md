@@ -56,6 +56,7 @@ plugins.
 | `preview` | `plugin-preview` | Markdown/KaTeX/Mermaid renderer |
 | `git` | `plugin-git` | project status, staging, commit and push through the host bridge |
 | `appearance` | `runtime` | palette tokens, stylesheet and editor theme registry |
+| `settings` | `runtime` | plugin settings registry surfaced in the Settings dialog |
 
 Services use Cordis `Service`, so injection and disposal are handled by the kernel.
 

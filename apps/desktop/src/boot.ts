@@ -8,6 +8,7 @@ import {
   AppearanceRegistry,
   ContentTypeRegistry,
   PlatformRegistry,
+  SettingsRegistry,
   SyntaxRegistry,
   TemplateRegistry,
 } from '@shirone-studio/runtime'
@@ -53,6 +54,7 @@ export async function createApp(): Promise<StudioApp> {
     templates: TemplateRegistry
     platforms: PlatformRegistry
     appearance: AppearanceRegistry
+    settings: SettingsRegistry
     host: HostBridge
   }
   await context.plugin(ContentTypeRegistry)
@@ -60,6 +62,7 @@ export async function createApp(): Promise<StudioApp> {
   await context.plugin(TemplateRegistry)
   await context.plugin(PlatformRegistry)
   await context.plugin(AppearanceRegistry)
+  await context.plugin(SettingsRegistry)
 
   const plugins = new PluginManager(context, registry, parseComposition(composeSource))
   await plugins.loadAll()
