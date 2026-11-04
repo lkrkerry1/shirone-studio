@@ -65,23 +65,29 @@ TEMP=.tmp TMP=.tmp pnpm build
 
 1. Set the workspace root to the Blog checkout (the directory containing `shirones/content` or
    `src/content`).
-2. Choose a post in the sidebar. The editor only shows the Markdown body; frontmatter is edited
-   in the right panel.
+2. Choose a post in the sidebar. The editor shows the Markdown body; frontmatter is edited in the
+   right panel. Switching to source mode (`切到源码`) shows the whole file, frontmatter included,
+   for exact edits.
 3. `Ctrl+S` saves. `updated` is maintained automatically when the body changes, the post is not
    a draft, and `published` is not in the future; disable “自动修改于” to edit it manually.
-4. “新建” opens templates for 单题题解 / 整赛题解 / 专题笔记 / 板子笔记 / 随笔. For algorithm
-   templates, pick a platform and fetch the problem title/slug/tags before creating.
+4. “新建” opens 单题题解 / 整赛题解 / 板子笔记 / 随笔 / 空白文章 / 新建系列 / 发一条瞬间. For
+   algorithm templates, pick a platform and fetch the problem title/slug/tags before creating.
+   系列 and 心情图标 are dropdowns; the series list comes from the existing series.
 5. Formatting issues appear as editor underlines and gutter markers; the status bar shows the
    current count. Quick fixes are available from the CodeMirror lint action.
 6. The right panel has a preview tab (Markdown, GFM, KaTeX, Mermaid, directives). Local images
    such as `./cover.png` resolve relative to the post bundle; `/images/...` resolves under
    `public/`. Raw `<video>` / `<audio>` elements use the same Tauri asset protocol.
-7. “插件” shows the loaded plugins. Core content plugins are locked; optional plugins can be
-   toggled without restarting the app.
+7. “设置” holds the app options (workspace root, autosave) and every plugin's settings. Plugin
+   rows start collapsed and expand to their fields (Luogu cookie, editor font size, default
+   category/draft for blank posts, default moment tags, default series status, lint enabled). The
+   plugin list lives there too: core plugins are locked, optional ones toggle without a restart.
 8. “Git” opens the repository panel: branch, changed files, per-file diff, staging, committing the
    selected paths and pushing. Authentication is whatever Git already uses (credential manager or
    SSH); prompts are disabled, so a missing credential shows up as an error, not a hang.
-9. Pasting or dropping an image stores it under the post's `img/` directory and inserts the
+9. Right-click a sidebar item (or use the delete button in the document bar) to remove content
+   after a confirmation; posts delete their bundle and moments their image folder.
+10. Pasting or dropping an image stores it under the post's `img/` directory and inserts the
    Markdown reference. Autosave writes 1.2s after the last edit; returning to the window reloads a
    clean buffer that changed on disk, and an unsaved buffer raises a reload/overwrite banner instead
    of overwriting it.
@@ -99,6 +105,7 @@ workspace packages; the app does not install remote plugin code in v1. See
 - [Plugin authoring](docs/plugin-authoring.md)
 - [Shirone syntax reference](docs/syntax-reference.md)
 - [Signing the installers](docs/signing.md)
+- [Changelog](CHANGELOG.md)
 
 ## WebView2 profile location
 
