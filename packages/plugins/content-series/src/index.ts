@@ -152,14 +152,20 @@ export const seriesType: ContentTypeDefinition = {
           options: ['ongoing', 'completed'],
         },
       ],
-      async create(_ctx, input) {
+      async create(ctx, input) {
+        const settings = (
+          ctx as unknown as {
+            settings?: { read(plugin: string, key: string): unknown }
+          }
+        ).settings
+        const status =
+          String(input.status ?? '') ||
+          String(settings?.read('content-series', 'defaultStatus') ?? 'ongoing')
         return {
           type: 'series',
           title: String(input.title ?? ''),
           slug: String(input.slug ?? ''),
-          frontmatter: {
-            status: String(input.status ?? 'ongoing'),
-          },
+          frontmatter: { status },
           body: '\n',
         }
       },
@@ -168,10 +174,25 @@ export const seriesType: ContentTypeDefinition = {
 }
 
 export const name = 'content-series'
-export const inject = ['contentTypes', 'host', 'frontmatter']
+export const inject = ['contentTypes', 'host', 'frontmatter', 'settings']
 
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.contentTypes.register(seriesType))
+  ctx.effect(() =>
+    ctx.settings.register({
+      plugin: 'content-series',
+      title: '系列',
+      fields: [
+        {
+          key: 'defaultStatus',
+          label: '新建系列默认状态',
+          type: 'select',
+          options: ['ongoing', 'completed'],
+          default: 'ongoing',
+        },
+      ],
+    }),
+  )
 }
 
 export default definePlugin({ name, inject, apply })

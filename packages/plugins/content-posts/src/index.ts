@@ -209,16 +209,25 @@ export function createPostType(): ContentTypeDefinition {
           { key: 'series', label: '系列 slug', type: 'string' },
           { key: 'seriesOrder', label: '系列序号', type: 'number' },
         ],
-        async create(_ctx, input) {
+        async create(ctx, input) {
           const series = String(input.series ?? '').trim()
           const seriesOrder =
             typeof input.seriesOrder === 'number' ? input.seriesOrder : undefined
+          const settings = (
+            ctx as unknown as {
+              settings?: { read(plugin: string, key: string): unknown }
+            }
+          ).settings
+          const category = String(settings?.read('content-posts', 'defaultCategory') ?? '随笔')
+          const draft = settings?.read('content-posts', 'defaultDraft') !== false
           return {
             type: 'posts',
             title: String(input.title ?? ''),
             slug: String(input.slug ?? ''),
             frontmatter: {
               description: String(input.description ?? ''),
+              category,
+              draft,
               ...(series ? { series } : {}),
               ...(seriesOrder === undefined ? {} : { seriesOrder }),
             },
@@ -233,10 +242,31 @@ export function createPostType(): ContentTypeDefinition {
 export const postsType = createPostType()
 
 export const name = 'content-posts'
-export const inject = ['contentTypes', 'host', 'frontmatter']
+export const inject = ['contentTypes', 'host', 'frontmatter', 'settings']
 
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.contentTypes.register(postsType))
+  ctx.effect(() =>
+    ctx.settings.register({
+      plugin: 'content-posts',
+      title: '文章',
+      fields: [
+        {
+          key: 'defaultCategory',
+          label: '空白文章默认分类',
+          type: 'select',
+          options: ['题解', '笔记', '随笔'],
+          default: '随笔',
+        },
+        {
+          key: 'defaultDraft',
+          label: '新建文章默认草稿',
+          type: 'boolean',
+          default: true,
+        },
+      ],
+    }),
+  )
 }
 
 export default definePlugin({ name, inject, apply })

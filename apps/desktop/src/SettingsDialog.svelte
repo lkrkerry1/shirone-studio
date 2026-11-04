@@ -199,32 +199,36 @@
       {#if pluginError}<p class="error">{pluginError}</p>{/if}
       {#each records as record (record.id)}
         {@const contribution = settingsFor(record)}
-        <div class="plugin">
-          <div class="plugin-head">
+        <details class="plugin">
+          <summary class="plugin-head">
             <div class="plugin-meta">
               <span class="plugin-name">{shortName(record.name)}</span>
               <span class="hint">
                 {record.group} · {record.state}{record.error ? ` · ${record.error}` : ''}
               </span>
             </div>
-            <label class="switch">
+            <span class="switch">
               <input
                 type="checkbox"
+                aria-label={`启用 ${shortName(record.name)}`}
                 checked={!record.disabled}
                 disabled={locked.has(record.name)}
+                onclick={(event) => event.stopPropagation()}
                 onchange={() => void toggle(record)}
               />
               <span>{record.disabled ? '已停用' : '启用'}</span>
-            </label>
-          </div>
+            </span>
+          </summary>
           {#if contribution}
             <div class="plugin-settings">
               {#each contribution.fields as field (field.key)}
                 {@render settingField(contribution.plugin, field)}
               {/each}
             </div>
+          {:else}
+            <p class="hint">该插件没有可配置项。</p>
           {/if}
-        </div>
+        </details>
       {/each}
     </section>
 
@@ -368,6 +372,26 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface-2);
+  }
+
+  .plugin > summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .plugin > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .plugin > summary::before {
+    content: '▸';
+    flex: none;
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .plugin[open] > summary::before {
+    content: '▾';
   }
 
   .plugin-head {

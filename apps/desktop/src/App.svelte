@@ -90,8 +90,16 @@
   const lintCategory = $derived(
     typeof current?.frontmatter?.category === 'string' ? current.frontmatter.category : '',
   )
+  let settingsVersion = $state(0)
+  const lintEnabled = $derived.by(() => {
+    // Recompute when the settings dialog writes a value.
+    void settingsVersion
+    return context ? context.settings.read('lint', 'enabled') !== false : false
+  })
   const lintDiagnostics = $derived(
-    context && current ? context.lint.check(body, current.type, { category: lintCategory }) : [],
+    lintEnabled && context && current
+      ? context.lint.check(body, current.type, { category: lintCategory })
+      : [],
   )
   const fixableLint = $derived(lintDiagnostics.filter((item) => item.fix !== undefined))
 
@@ -682,7 +690,11 @@
                 value={richEditing ? body : sourceText}
                 docId={current.path}
                 onChange={updateFromEditor}
-                lintSource={(text) => context?.lint.check(text, current?.type ?? 'posts', { category: lintCategory }) ?? []}
+                lintSource={lintEnabled
+                  ? (text) =>
+                      context?.lint.check(text, current?.type ?? 'posts', { category: lintCategory }) ??
+                      []
+                  : undefined}
                 extensions={editorExtensions}
                 rich={richEditing}
                 resolveAsset={resolvePreviewAsset}
@@ -759,7 +771,10 @@
         saveAutosave(value)
       }}
       onreload={reloadRoot}
-      onsaved={applySettings}
+      onsaved={() => {
+        settingsVersion += 1
+        applySettings()
+      }}
       onclose={() => (showSettings = false)}
     />
   {/if}

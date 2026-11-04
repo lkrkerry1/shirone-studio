@@ -46,6 +46,42 @@
   let lastDocId = ''
   const richCompartment = new Compartment()
   const richExtension = () => (rich ? richMarkdown({ resolveAsset, renderTable }) : [])
+  const lintCompartment = new Compartment()
+  let lintActive = false
+
+  const lintExtension = () => {
+    const source = lintSource
+    if (!source) return []
+    return [
+      lintGutter(),
+      linter(
+        (current) =>
+          source(current.state.doc.toString()).map((item) => ({
+            from: Math.min(item.from, item.to),
+            to: Math.max(item.from, item.to),
+            severity: item.severity,
+            message: item.message,
+            actions: item.fix
+              ? [
+                  {
+                    name: item.fix.label,
+                    apply: (target: EditorView) => {
+                      target.dispatch({
+                        changes: {
+                          from: item.fix!.from,
+                          to: item.fix!.to,
+                          insert: item.fix!.insert,
+                        },
+                      })
+                    },
+                  },
+                ]
+              : undefined,
+          })),
+        { delay: 250 },
+      ),
+    ]
+  }
 
   onMount(() => {
     // `extensions` comes after basicSetup so a theme can override its defaults.
@@ -57,43 +93,14 @@
       // default base is CommonMark.
       markdown({ base: markdownLanguage, codeLanguages }),
       richCompartment.of(richExtension()),
+      lintCompartment.of(lintExtension()),
       ...extensions,
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onChange(update.state.doc.toString())
       }),
     ]
-    if (lintSource) {
-      editorExtensions.push(
-        lintGutter(),
-        linter(
-          (current) =>
-            lintSource(current.state.doc.toString()).map((item) => ({
-              from: Math.min(item.from, item.to),
-              to: Math.max(item.from, item.to),
-              severity: item.severity,
-              message: item.message,
-              actions: item.fix
-                ? [
-                    {
-                      name: item.fix.label,
-                      apply: (target: EditorView) => {
-                        target.dispatch({
-                          changes: {
-                            from: item.fix!.from,
-                            to: item.fix!.to,
-                            insert: item.fix!.insert,
-                          },
-                        })
-                      },
-                    },
-                  ]
-                : undefined,
-            })),
-          { delay: 250 },
-        ),
-      )
-    }
+    lintActive = lintSource !== undefined
     view = new EditorView({
       state: EditorState.create({ doc: value, extensions: editorExtensions }),
       parent: host,
@@ -137,6 +144,15 @@
       void insertImage(file, position, position)
     })
     return () => view?.destroy()
+  })
+
+  // Turning the linter off must also remove its gutter markers, which requires
+  // reconfiguring the extension rather than just ignoring its results.
+  $effect(() => {
+    const active = lintSource !== undefined
+    if (!view || active === lintActive) return
+    lintActive = active
+    view.dispatch({ effects: lintCompartment.reconfigure(lintExtension()) })
   })
 
   // Reconfigure instead of recreating the view, so toggling keeps undo history

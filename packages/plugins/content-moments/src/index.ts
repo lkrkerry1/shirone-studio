@@ -188,10 +188,22 @@ export const momentsType: ContentTypeDefinition = {
         { key: 'location', label: '位置', type: 'string' },
         { key: 'tags', label: '标签', type: 'tags' },
       ],
-      async create(_ctx, input) {
+      async create(ctx, input) {
+        const settings = (
+          ctx as unknown as {
+            settings?: { read(plugin: string, key: string): unknown }
+          }
+        ).settings
+        const defaults = String(settings?.read('content-moments', 'defaultTags') ?? '')
+          .split(/[,，]/)
+          .map((tag) => tag.trim())
+          .filter(Boolean)
         const tags = typeof input.tags === 'string'
           ? input.tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean)
           : []
+        for (const tag of defaults) {
+          if (!tags.includes(tag)) tags.push(tag)
+        }
         return {
           type: 'moments',
           slug: String(input.slug ?? ''),
@@ -208,10 +220,26 @@ export const momentsType: ContentTypeDefinition = {
 }
 
 export const name = 'content-moments'
-export const inject = ['contentTypes', 'host', 'frontmatter']
+export const inject = ['contentTypes', 'host', 'frontmatter', 'settings']
 
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.contentTypes.register(momentsType))
+  ctx.effect(() =>
+    ctx.settings.register({
+      plugin: 'content-moments',
+      title: '瞬间',
+      fields: [
+        {
+          key: 'defaultTags',
+          label: '默认标签',
+          type: 'string',
+          default: '',
+          placeholder: '日常, 碎碎念',
+          description: '用逗号分隔，新建瞬间时自动带上。',
+        },
+      ],
+    }),
+  )
 }
 
 export default definePlugin({ name, inject, apply })
